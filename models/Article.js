@@ -8,6 +8,7 @@ const ArticleSchema = new mongoose.Schema({
     volume: String,
     no: String,
     page: String,
+    publisher: String,
     description: String,
     index: String,
     url: String,

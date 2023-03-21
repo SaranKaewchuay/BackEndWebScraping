@@ -8,7 +8,7 @@ const { ObjectId } = require('mongodb');
 
 const insertDatatoDb = async (all) => {
 
-  const authorPromises = all.map(async (author) => {
+  all.map(async (author) => {
     const objectId = new ObjectId();
 
     const newAuthor = new Author({
@@ -20,7 +20,7 @@ const insertDatatoDb = async (all) => {
       image: author.image,
     });
 
-    const articlePromises = author.article.map(async (article) => {
+    author.article.map(async (article) => {
       const newArticle = new Article({
         articleName: article.articleName,
         author: article.author,
@@ -36,14 +36,8 @@ const insertDatatoDb = async (all) => {
       });
       return await newArticle.save();
     });
-
-    // const savedArticles = await Promise.all(articlePromises);
-
     return await newAuthor.save();
   });
-
-  // const savedAuthors = await Promise.all(authorPromises);
-
 };
 
 router.get("/", async (req, res) => {

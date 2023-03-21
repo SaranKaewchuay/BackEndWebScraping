@@ -31,6 +31,7 @@ const insertDatatoDb = async (all) => {
         page: article.page,
         publisher: article.publisher,
         description: article.description,
+        index: article.index,
         url: article.url,
         author_id: objectId,
       });

@@ -124,17 +124,14 @@ const getDetail = async (html, url, author_id) => {
     article_id: numArticle,
     articleName: $("#gsc_oci_title > a").text(),
     author: await getAuthor(html),
-    releaseDate: $(
-      "#gsc_oci_table > div:nth-child(2) > div.gsc_oci_value"
-    ).text(),
-    academicJournal: $(
-      "#gsc_oci_table > div:nth-child(3) > div.gsc_oci_value"
-    ).text(),
+    releaseDate: $("#gsc_oci_table > div:nth-child(2) > div.gsc_oci_value").text(),
+    academicJournal: (await data).academicJournal,
     volume: (await data).volume,
     no: (await data).no,
     page: (await data).page,
     publisher: (await data).publisher,
     description: $("#gsc_oci_descr > div").text().trim(),
+    index: ($("div.gsc_oci_value > div:nth-child(1) > a").text()).replace(/^อ้างอิงโดย/, ''),
     url: url,
     author_id: author_id,
   };

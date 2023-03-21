@@ -3,9 +3,13 @@ const check_field = async ($) => {
   var publisher = $("#gsc_oci_table > div:nth-child(7) > div.gsc_oci_value").text();
   var no = $("#gsc_oci_table > div:nth-child(5) > div.gsc_oci_value").text();
   var volume = $("#gsc_oci_table > div:nth-child(4) > div.gsc_oci_value").text();
+  var academicJournal = $("#gsc_oci_table > div:nth-child(3) > div.gsc_oci_value").text()
 
   if (publisher.length >= 59) {
     var publisher = "";
+  }
+  if (academicJournal.length >= 110) {
+    var academicJournal = "";
   }
   if (no.includes("-")) {
     var no = "";
@@ -34,6 +38,7 @@ const check_field = async ($) => {
   }
 
   const data = {
+    academicJournal:academicJournal,
     volume: volume,
     no: no,
     page: page,

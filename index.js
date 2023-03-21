@@ -1,31 +1,28 @@
-const express = require('express')
+const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors');
 
-const authors = require('./routes/authors');
-const articles = require('./routes/articles');
-const scraper = require('./routes/scraper');
+const authorsRouter = require('./routes/authors');
+const articlesRouter = require('./routes/articles');
+const scraperRouter = require('./routes/scraper');
 
-
-const PORT = process.env.PORT || 8080;
 const app = express();
+const PORT = process.env.PORT || 8080;
 
-mongoose.Promise = global.Promise
-mongoose.connect("mongodb+srv://root:1234@db01.uyg1g.mongodb.net/test", {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    dbName: "ScraperDB"
+mongoose.connect('mongodb+srv://root:1234@db01.uyg1g.mongodb.net/test', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  dbName: 'ScraperDB'
 })
-    .then(() => console.log('connection successful'))
-    .catch((err) => console.error(err))
+  .then(() => console.log('Connected to MongoDB'))
+  .catch((err) => console.error(err));
 
-// app.use(bodyParser.json())
 app.use(express.urlencoded({ extended: true }));
-
-app.use('/authors', authors);
-app.use('/articles', articles);
-app.use('/scraper', scraper);
-
+app.use(cors()); // Add this line to enable CORS
+app.use('/authors', authorsRouter);
+app.use('/articles', articlesRouter);
+app.use('/scraper', scraperRouter);
 
 app.listen(PORT, () => {
-    console.log('Start server at port', PORT);
+  console.log(`Server started on port ${PORT}`);
 });

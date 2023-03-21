@@ -76,7 +76,7 @@ const getArticleOfAuthor = async (selector, URL, author_id) => {
   console.log("Article");
 
   //content.length
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < content.length; i++) {
     console.log(i + 1);
     const e = content[i];
     const detail_page_url = e.url;

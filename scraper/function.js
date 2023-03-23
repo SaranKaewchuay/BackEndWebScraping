@@ -126,7 +126,7 @@ const getDetail = async (html, url, author_id) => {
     field.push(fieldText);
 
     if (fieldText === "total_citations") {
-      news_data[fieldText] = fieldValue;
+      news_data[fieldText] = (fieldValue.replace("Cited by","")).trim();
     } else {
       news_data[fieldText] = $(this).find(".gsc_oci_value").text().trim();
       if (fieldText === "authors") {

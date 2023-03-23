@@ -120,7 +120,7 @@ const getDetail = async (html, url, author_id) => {
 
   content.each(async function (i) {
     let fieldText = $(this).find(".gsc_oci_field").text().trim().toLowerCase();
-    fieldText = fieldText.replace(" ", "_"); // assign the updated value back to fieldText
+    fieldText = fieldText.replace(" ", "_"); 
 
     const fieldValue = $(this).find(".gsc_oci_value > div > a").text().trim();
     field.push(fieldText);

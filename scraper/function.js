@@ -119,9 +119,9 @@ const getDetail = async (html, url, author_id) => {
   (news_data.article_name = $("#gsc_oci_title > a").text());
 
   content.each(async function (i) {
+
     let fieldText = $(this).find(".gsc_oci_field").text().trim().toLowerCase();
     fieldText = fieldText.replace(" ", "_"); 
-
     const fieldValue = $(this).find(".gsc_oci_value > div > a").text().trim();
     field.push(fieldText);
 

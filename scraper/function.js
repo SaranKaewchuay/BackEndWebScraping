@@ -3,8 +3,9 @@ const cheerio = require("cheerio");
 const iconv = require("iconv-lite");
 const userAgents = require("user-agents");
 
-var numArticle = null;
+let numArticle = null;
 const articleAll = [];
+const authorAll = [];
 
 const getAllAuthorURL = async (selector, url) => {
   const html = await sendRequestGetDetail(url);
@@ -47,28 +48,25 @@ const getSubjectArea = async (html) => {
 
 const getAuthorDetail = async (html, num) => {
   const $ = cheerio.load(html);
-  news_data = {
+  const author_detail = {
     author_id: num,
     author_name: $("#gsc_prf_in").text(),
     department: $("#gsc_prf_i > div:nth-child(2)").text(),
     subject_area: await getSubjectArea(html),
-    h_index: $(
-      "#gsc_rsb_st > tbody > tr:nth-child(2) > td:nth-child(2)"
-    ).text(),
+    h_index: $("#gsc_rsb_st > tbody > tr:nth-child(2) > td:nth-child(2)").text(),
     image: $("#gsc_prf_pup-img").attr("src"),
   };
 
-  return news_data;
+  return author_detail;
 };
 
 const getArticleOfAuthor = async (selector, URL, author_id) => {
   const html = await sendRequestGetDetail(URL);
   const content = await getArrayObjectData(html, selector);
-  const new_data = [];
+  const article_detail = [];
 
   console.log("Number of Articles : ", content.length);
   console.log("Article");
-
   //content.length
   for (let i = 0; i < 2; i++) {
     console.log(i + 1);
@@ -77,14 +75,14 @@ const getArticleOfAuthor = async (selector, URL, author_id) => {
     await new Promise((resolve) => setTimeout(resolve, 100));
     const detail_page_html = await sendRequestGetDetail(detail_page_url);
     numArticle += 1;
-    const data = await getDetail(detail_page_html, detail_page_url, author_id);
-    articleAll.push(data);
-    new_data.push(data);
+    const article_data = await getArticleDetail(detail_page_html, detail_page_url, author_id);
+    articleAll.push(article_data);
+    article_detail.push(article_data);
   }
-  const all = await getAuthorDetail(html, author_id);
-  all.articles = new_data;
-  const author = await getAuthorDetail(html, author_id);
-  return { all: all, author: author };
+  const articleOfAuthor = await getAuthorDetail(html, author_id);
+  authorAll.push(articleOfAuthor)
+  articleOfAuthor.articles = article_detail;
+  return articleOfAuthor;
 };
 
 const getArrayObjectData = async (html, selector) => {
@@ -109,14 +107,14 @@ const getAuthor = async (author) => {
   return data;
 };
 
-const getDetail = async (html, url, author_id) => {
+const getArticleDetail = async (html, url, author_id) => {
   const $ = cheerio.load(html);
   const content = $("#gsc_oci_table > div.gs_scl");
 
   const field = [];
-  let news_data = {};
-  (news_data.article_id = numArticle),
-  (news_data.article_name = $("#gsc_oci_title > a").text());
+  let article_data = {};
+  (article_data.article_id = numArticle),
+  (article_data.article_name = $("#gsc_oci_title > a").text());
 
   content.each(async function (i) {
 
@@ -126,17 +124,17 @@ const getDetail = async (html, url, author_id) => {
     field.push(fieldText);
 
     if (fieldText === "total_citations") {
-      news_data[fieldText] = (fieldValue.replace("Cited by","")).trim();
+      article_data[fieldText] = (fieldValue.replace("Cited by","")).trim();
     } else {
-      news_data[fieldText] = $(this).find(".gsc_oci_value").text().trim();
+      article_data[fieldText] = $(this).find(".gsc_oci_value").text().trim();
       if (fieldText === "authors") {
-        news_data[fieldText] = await getAuthor(news_data[fieldText]);
+        article_data[fieldText] = await getAuthor(article_data[fieldText]);
       }
     }
   });
-  (news_data.url = url), (news_data.author_id = author_id);
+  (article_data.url = url), (article_data.author_id = author_id);
 
-  return news_data;
+  return article_data;
 };
 
 const sendRequestGetDetail = async (URL) => {
@@ -163,6 +161,6 @@ module.exports = {
   getAllAuthorURL,
   sendRequestGetDetail,
   getAuthorDetail,
-  getDetail,
+  getArticleDetail,
   getArticleAll,
 };

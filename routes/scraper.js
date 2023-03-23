@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { getArticleOfAuthor, getAllAuthorURL, getArticleAll } = require("../scraper/function");
+const { getArticleOfAuthor, getAllAuthorURL} = require("../scraper/function");
 
 const Author = require('../models/Author.js');
 const Article = require('../models/Article.js');
@@ -47,21 +47,21 @@ router.get("/", async (req, res) => {
   const authorURL = await getAllAuthorURL(selectorForURL, startURL);
 
   const selector = "#gsc_a_b > tr";
-  let all = [];
+  let articleOfAuthor = [];
   //authorURL.length
   for (let i = 0; i < 2 ; i++) {
     console.log("Author ", i + 1, " : " + authorURL[i].name)
     const num = i + 1;
     const data = await getArticleOfAuthor(selector, authorURL[i].url, num);
-    all.push(data.all)
-    console.log(all)
+    articleOfAuthor.push(data)
+    console.log(articleOfAuthor)
     // await insertDatatoDb(all)
     // all = []
   }
   console.log("Finish")
 
   res.status(200).json({
-    data: all
+    data: articleOfAuthor
   });
 });
 

@@ -42,21 +42,21 @@ const insertDatatoDb = async (all) => {
 };
 
 router.get("/", async (req, res) => {
-  const startURL = "https://scholar.google.com/citations?view_op=view_org&org=16635630670053173100&hl=th&oi=io";
+  const startURL = "https://scholar.google.com/citations?view_op=view_org&org=16635630670053173100&hl=en&oi=io";
   const selectorForURL = "#gsc_sa_ccl > div.gsc_1usr";
   const authorURL = await getAllAuthorURL(selectorForURL, startURL);
 
   const selector = "#gsc_a_b > tr";
   let all = [];
-
-  for (let i = 0; i < authorURL.length ; i++) {
+  //authorURL.length
+  for (let i = 0; i < 2 ; i++) {
     console.log("Author ", i + 1, " : " + authorURL[i].name)
     const num = i + 1;
     const data = await getArticleOfAuthor(selector, authorURL[i].url, num);
     all.push(data.all)
     console.log(all)
-    await insertDatatoDb(all)
-    all = []
+    // await insertDatatoDb(all)
+    // all = []
   }
   console.log("Finish")
 

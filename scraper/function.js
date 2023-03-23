@@ -49,9 +49,9 @@ const getAuthorDetail = async (html, num) => {
   const $ = cheerio.load(html);
   news_data = {
     author_id: num,
-    authorName: $("#gsc_prf_in").text(),
+    author_name: $("#gsc_prf_in").text(),
     department: $("#gsc_prf_i > div:nth-child(2)").text(),
-    subjectArea: await getSubjectArea(html),
+    subject_area: await getSubjectArea(html),
     h_index: $(
       "#gsc_rsb_st > tbody > tr:nth-child(2) > td:nth-child(2)"
     ).text(),
@@ -82,7 +82,7 @@ const getArticleOfAuthor = async (selector, URL, author_id) => {
     new_data.push(data);
   }
   const all = await getAuthorDetail(html, author_id);
-  all.article = new_data;
+  all.articles = new_data;
   const author = await getAuthorDetail(html, author_id);
   return { all: all, author: author };
 };
@@ -115,26 +115,26 @@ const getDetail = async (html, url, author_id) => {
 
   const field = [];
   let news_data = {};
-  (news_data.Article_id = numArticle),
-  (news_data.Article_name = $("#gsc_oci_title > a").text());
+  (news_data.article_id = numArticle),
+  (news_data.article_name = $("#gsc_oci_title > a").text());
 
   content.each(async function (i) {
-    let fieldText = $(this).find(".gsc_oci_field").text().trim();
+    let fieldText = $(this).find(".gsc_oci_field").text().trim().toLowerCase();
     fieldText = fieldText.replace(" ", "_"); // assign the updated value back to fieldText
 
     const fieldValue = $(this).find(".gsc_oci_value > div > a").text().trim();
     field.push(fieldText);
 
-    if (fieldText === "Total_citations") {
+    if (fieldText === "total_citations") {
       news_data[fieldText] = fieldValue;
     } else {
       news_data[fieldText] = $(this).find(".gsc_oci_value").text().trim();
-      if (fieldText === "Authors") {
+      if (fieldText === "authors") {
         news_data[fieldText] = await getAuthor(news_data[fieldText]);
       }
     }
   });
-  (news_data.Url = url), (news_data.Author_id = author_id);
+  (news_data.url = url), (news_data.author_id = author_id);
 
   return news_data;
 };

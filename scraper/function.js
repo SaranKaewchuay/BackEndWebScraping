@@ -2,10 +2,15 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const iconv = require("iconv-lite");
 const userAgents = require("user-agents");
+const SerpApi = require("google-search-results-nodejs");
+const search = new SerpApi.GoogleSearch(
+  "bb9dd3ebbad1ab883ed7fe0279b5e08c019d1c165d8801dc68547aed0b5e8904"
+);
 
 let numArticle = null;
 const articleAll = [];
 const authorAll = [];
+const data = []
 
 const getAllAuthorURL = async (selector, url) => {
   const html = await sendRequestGetDetail(url);
@@ -45,16 +50,44 @@ const getSubjectArea = async (html) => {
 
   return subjectArea;
 };
+const getUserID = async (url) => {
+  const regex = /user=([\w-]+)/;
+  const match = url.match(regex);
+  const user = match[1];
+  return user;
 
-const getAuthorDetail = async (html, num) => {
+};
+const getCitationByFromApi = async (userID) => {
+  const params = {
+    engine: "google_scholar_author",
+    author_id: userID,
+  };
+
+  return new Promise((resolve, reject) => {
+    search.json(params, function (data) {
+      resolve(data["cited_by"]);
+    }, function (error) {
+      reject(error);
+    });
+  });
+};
+
+
+const getAuthorDetail = async (html, num, url) => {
   const $ = cheerio.load(html);
+
+  const userID = await getUserID(url);
+  console.log("userID = ", userID);
   const author_detail = {
     author_id: num,
     author_name: $("#gsc_prf_in").text(),
     department: $("#gsc_prf_i > div:nth-child(2)").text(),
     subject_area: await getSubjectArea(html),
-    h_index: $("#gsc_rsb_st > tbody > tr:nth-child(2) > td:nth-child(2)").text(),
+    h_index: $(
+      "#gsc_rsb_st > tbody > tr:nth-child(2) > td:nth-child(2)"
+    ).text(),
     image: $("#gsc_prf_pup-img").attr("src"),
+    citation_by: await getCitationByFromApi(userID),
   };
 
   return author_detail;
@@ -75,12 +108,16 @@ const getArticleOfAuthor = async (selector, URL, author_id) => {
     await new Promise((resolve) => setTimeout(resolve, 100));
     const detail_page_html = await sendRequestGetDetail(detail_page_url);
     numArticle += 1;
-    const article_data = await getArticleDetail(detail_page_html, detail_page_url, author_id);
+    const article_data = await getArticleDetail(
+      detail_page_html,
+      detail_page_url,
+      author_id
+    );
     articleAll.push(article_data);
     article_detail.push(article_data);
   }
-  const articleOfAuthor = await getAuthorDetail(html, author_id);
-  authorAll.push(articleOfAuthor)
+  const articleOfAuthor = await getAuthorDetail(html, author_id, URL);
+  authorAll.push(articleOfAuthor);
   articleOfAuthor.articles = article_detail;
   return articleOfAuthor;
 };
@@ -100,7 +137,7 @@ const getArrayObjectData = async (html, selector) => {
 };
 
 const getAuthor = async (author) => {
-  const data = author.split(',')
+  const data = author.split(",");
   for (let i = 0; i < data.length; i++) {
     data[i] = data[i].trim();
   }
@@ -114,17 +151,16 @@ const getArticleDetail = async (html, url, author_id) => {
   const field = [];
   let article_data = {};
   (article_data.article_id = numArticle),
-  (article_data.article_name = $("#gsc_oci_title > a").text());
+    (article_data.article_name = $("#gsc_oci_title > a").text());
 
   content.each(async function (i) {
-
     let fieldText = $(this).find(".gsc_oci_field").text().trim().toLowerCase();
-    fieldText = fieldText.replace(" ", "_"); 
+    fieldText = fieldText.replace(" ", "_");
     const fieldValue = $(this).find(".gsc_oci_value > div > a").text().trim();
     field.push(fieldText);
 
     if (fieldText === "total_citations") {
-      article_data[fieldText] = (fieldValue.replace("Cited by","")).trim();
+      article_data[fieldText] = fieldValue.replace("Cited by", "").trim();
     } else {
       article_data[fieldText] = $(this).find(".gsc_oci_value").text().trim();
       if (fieldText === "authors") {

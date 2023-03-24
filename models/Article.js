@@ -1,16 +1,16 @@
 const mongoose = require("mongoose");
 
 const ArticleSchema = new mongoose.Schema({
-    articleName: String,
-    author: Array,
-    releaseDate: String,
-    academicJournal: String,
+    article_name: String,
+    authors: Array,
+    publication_date: String,
+    journal: String,
     volume: String,
-    no: String,
-    page: String,
+    issue: String,
+    pages: String,
     publisher: String,
     description: String,
-    index: String,
+    total_citations:String,
     url: String,
     author_id: {
         type: mongoose.Schema.Types.ObjectId,

@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { getArticleOfAuthor, getAllAuthorURL} = require("../scraper/function");
+const { getArticleOfAuthor, getAllAuthorURL } = require("../scraper/function");
 
 const Author = require('../models/Author.js');
 const Article = require('../models/Article.js');
@@ -13,25 +13,28 @@ const insertDatatoDb = async (all) => {
 
     const newAuthor = new Author({
       _id: objectId,
-      authorName: author.authorName,
+      author_name: author.author_name,
       department: author.department,
-      subjectArea: author.subjectArea,
-      h_index: author.h_index,
+      subject_area: author.subject_area,
       image: author.image,
+      citation_by: {
+        table: author.citation_by.table,
+        graph: author.citation_by.graph
+      }
     });
 
-    author.article.map(async (article) => {
+    author.articles.map(async (article) => {
       const newArticle = new Article({
-        articleName: article.articleName,
-        author: article.author,
-        releaseDate: article.releaseDate,
-        academicJournal: article.academicJournal,
+        article_name: article.article_name,
+        authors: article.authors,
+        publication_date: article.publication_date,
+        journal: article.journal,
         volume: article.volume,
-        no: article.no,
-        page: article.page,
+        issue: article.issue,
+        pages: article.pages,
         publisher: article.publisher,
         description: article.description,
-        index: article.index,
+        total_citations: article.total_citations,
         url: article.url,
         author_id: objectId,
       });
@@ -49,19 +52,19 @@ router.get("/", async (req, res) => {
   const selector = "#gsc_a_b > tr";
   let articleOfAuthor = [];
   //authorURL.length
-  for (let i = 0; i < 2 ; i++) {
+  for (let i = 0; i < 4; i++) {
     console.log("Author ", i + 1, " : " + authorURL[i].name)
     const num = i + 1;
     const data = await getArticleOfAuthor(selector, authorURL[i].url, num);
     articleOfAuthor.push(data)
     console.log(articleOfAuthor)
-    // await insertDatatoDb(all)
-    // all = []
+    await insertDatatoDb(articleOfAuthor)
+    articleOfAuthor = []
   }
   console.log("Finish")
 
   res.status(200).json({
-    data: articleOfAuthor
+    meseage: "successful"
   });
 });
 

@@ -10,7 +10,7 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 //mongodb+srv://root:1234@db01.uyg1g.mongodb.net/test
 
-mongoose.connect('mongodb+srv://root:1234@db01.uyg1g.mongodb.net/test', {
+mongoose.connect('mongodb+srv://root:1234@cluster0.l78dbvc.mongodb.net/test', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
   dbName: 'ScraperDB'

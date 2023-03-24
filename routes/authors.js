@@ -34,7 +34,7 @@ router.get('/author/:authorName', (req, res, next) => {
 
     if (authorName) {
         const regex = new RegExp(`^${authorName}`, 'i');
-        query.authorName = { $regex: regex };
+        query.author_name = { $regex: regex };
     }
 
     Author.find(query)

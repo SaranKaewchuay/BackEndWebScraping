@@ -52,7 +52,7 @@ router.get("/", async (req, res) => {
   const selector = "#gsc_a_b > tr";
   let articleOfAuthor = [];
   //authorURL.length
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < authorURL.length; i++) {
     console.log("Author ", i + 1, " : " + authorURL[i].name)
     const num = i + 1;
     const data = await getArticleOfAuthor(selector, authorURL[i].url, num);

@@ -10,57 +10,43 @@ const search = new SerpApi.GoogleSearch(
 let numArticle = null;
 const articleAll = [];
 const authorAll = [];
-const data = []
 
-const getAllAuthorURL = async (selector, url) => {
+const getAllAuthorURL = async (url) => {
+  const selector = "#gsc_sa_ccl > div.gsc_1usr";
   const html = await sendRequestGetDetail(url);
   const allURL = await getURL(html, selector);
   return allURL;
 };
 
-const getArticleAll = async () => {
-  return articleAll;
-};
 
 const getURL = async (html, selector) => {
   const $ = cheerio.load(html);
   const content = $(selector);
-  const news_data = [];
+  const url_data = [];
 
   content.each(function () {
     const obj = {
       name: $(this).find("div > div > h3 > a").text(),
       url:
-        "https://scholar.google.com" + $(this).find("> div > a").attr("href"),
+        "https://scholar.google.com" + $(this).find("div > a").attr("href"),
     };
-    news_data.push(obj);
+    url_data.push(obj);
   });
-  return news_data;
+  return url_data;
 };
 
-const getSubjectArea = async (html) => {
-  const $ = cheerio.load(html);
-  const subjectArea = [];
-  const subject = $("#gsc_prf_int > a");
 
-  for (let i = 0; i < subject.length; i++) {
-    const obj = $("#gsc_prf_int > a:nth-child(" + (i + 1) + ")").text();
-    subjectArea.push(obj);
-  }
-
-  return subjectArea;
-};
-const getUserID = async (url) => {
+const getUserScholarId = async (url) => {
   const regex = /user=([\w-]+)/;
   const match = url.match(regex);
-  const user = match[1];
-  return user;
-
+  const user_scholar_id = match[1];
+  return user_scholar_id;
 };
-const getCitationByFromApi = async (userID) => {
+
+const getCitationByFromApi = async (user_scholar_id) => {
   const params = {
     engine: "google_scholar_author",
-    author_id: userID,
+    author_id: user_scholar_id,
   };
 
   return new Promise((resolve, reject) => {
@@ -73,35 +59,20 @@ const getCitationByFromApi = async (userID) => {
 };
 
 
-const getAuthorDetail = async (html, num, url) => {
-  const $ = cheerio.load(html);
-
-  const userID = await getUserID(url);
-  console.log("userID = ", userID);
-  const author_detail = {
-    author_id: num,
-    author_name: $("#gsc_prf_in").text(),
-    department: $("#gsc_prf_i > div:nth-child(2)").text(),
-    subject_area: await getSubjectArea(html),
-    h_index: $(
-      "#gsc_rsb_st > tbody > tr:nth-child(2) > td:nth-child(2)"
-    ).text(),
-    image: $("#gsc_prf_pup-img").attr("src"),
-    citation_by: await getCitationByFromApi(userID),
-  };
-
-  return author_detail;
+const getArticleAll = async () => {
+  return articleAll;
 };
 
-const getArticleOfAuthor = async (selector, URL, author_id) => {
+const getArticleOfAuthor = async (URL, author_id) => {
+  const selector = "#gsc_a_b > tr";
   const html = await sendRequestGetDetail(URL);
-  const content = await getArrayObjectData(html, selector);
+  const content = await getArticleUrl(html, selector);
   const article_detail = [];
 
   console.log("Number of Articles : ", content.length);
   console.log("Article");
   //content.length
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 2; i++) {
     console.log(i + 1);
     const e = content[i];
     const detail_page_url = e.url;
@@ -122,7 +93,41 @@ const getArticleOfAuthor = async (selector, URL, author_id) => {
   return articleOfAuthor;
 };
 
-const getArrayObjectData = async (html, selector) => {
+const getAuthorDetail = async (html, num, url) => {
+
+  const $ = cheerio.load(html);
+  const user_scholar_id = await getUserScholarId(url);
+
+  const author_detail = {
+    author_id: num,
+    author_name: $("#gsc_prf_in").text(),
+    department: $("#gsc_prf_i > div:nth-child(2)").text(),
+    subject_area: await getSubjectArea(html),
+    h_index: $(
+      "#gsc_rsb_st > tbody > tr:nth-child(2) > td:nth-child(2)"
+    ).text(),
+    image: $("#gsc_prf_pup-img").attr("src"),
+    citation_by: await getCitationByFromApi(user_scholar_id),
+  };
+
+  return author_detail;
+};
+const getSubjectArea = async (html) => {
+  const $ = cheerio.load(html);
+  const subjectArea = [];
+  const subject = $("#gsc_prf_int > a");
+
+  for (let i = 0; i < subject.length; i++) {
+    const obj = $("#gsc_prf_int > a:nth-child(" + (i + 1) + ")").text();
+    subjectArea.push(obj);
+  }
+
+  return subjectArea;
+};
+
+
+
+const getArticleUrl = async (html, selector) => {
   const $ = cheerio.load(html);
   const content = $(selector);
   const news_data = [];
@@ -137,11 +142,11 @@ const getArrayObjectData = async (html, selector) => {
 };
 
 const getAuthor = async (author) => {
-  const data = author.split(",");
-  for (let i = 0; i < data.length; i++) {
-    data[i] = data[i].trim();
+  const author_data = author.split(",");
+  for (let i = 0; i < author_data.length; i++) {
+    author_data[i] = author_data[i].trim();
   }
-  return data;
+  return author_data;
 };
 
 const getArticleDetail = async (html, url, author_id) => {
@@ -189,6 +194,7 @@ const sendRequestGetDetail = async (URL) => {
     },
   });
   const html = iconv.decode(response.data, "utf-8");
+  
   return html;
 };
 

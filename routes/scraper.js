@@ -46,20 +46,14 @@ const insertDatatoDb = async (all) => {
 
 router.get("/", async (req, res) => {
   const startURL = "https://scholar.google.com/citations?view_op=view_org&org=16635630670053173100&hl=en&oi=io";
-  const URL = "https://scholar.google.com/citations?view_op=view_org&hl=en&org=16635630670053173100&after_author=wYdMAA_4__8J&astart=20";
-
-  const selectorForURL = "#gsc_sa_ccl > div.gsc_1usr";
-  const authorURL = await getAllAuthorURL(selectorForURL, startURL);
-  const authorURL1 = await getAllAuthorURL(selectorForURL, URL);
-  const allURL = authorURL.concat(authorURL1);
-
-  const selector = "#gsc_a_b > tr";
+  const authorURL = await getAllAuthorURL(startURL);
+ 
   let articleOfAuthor = [];
   //authorURL.length
-  for (let i = 0; i < allURL.length; i++) {
-    console.log("Author ", i + 1, " : " + allURL[i].name)
+  for (let i = 0; i < 2; i++) {
+    console.log("Author ", i + 1, " : " + authorURL[i].name)
     const num = i + 1;
-    const data = await getArticleOfAuthor(selector, allURL[i].url, num);
+    const data = await getArticleOfAuthor(authorURL[i].url, num);
     articleOfAuthor.push(data)
     console.log(articleOfAuthor)
     await insertDatatoDb(articleOfAuthor)
@@ -68,8 +62,9 @@ router.get("/", async (req, res) => {
   console.log("Finish")
 
   res.status(200).json({
-    meseage: "successful"
+    meseage: "successful",    
   });
+
 });
 
 module.exports = router;

@@ -11,15 +11,34 @@ let numArticle = null;
 const articleAll = [];
 const authorAll = [];
 
-const getAllAuthorURL = async (url) => {
-  const selector = "#gsc_sa_ccl > div.gsc_1usr";
-  const html = await sendRequestGetDetail(url);
-  const allURL = await getURL(html, selector);
-  return allURL;
+const sendRequestGetDetail = async (URL) => {
+  const randomUserAgent = new userAgents({
+    deviceCategory: "desktop",
+  }).toString();
+
+  const response = await axios.request({
+    method: "GET",
+    url: URL,
+    responseType: "arraybuffer",
+    responseEncoding: "binary",
+    headers: {
+      "User-Agent": randomUserAgent,
+    },
+  });
+  const html = iconv.decode(response.data, "utf-8");
+  
+  return html;
 };
 
 
-const getURL = async (html, selector) => {
+const getAllAuthorURL = async (url) => {
+  const html = await sendRequestGetDetail(url);
+  const allURL = await getURL(html);
+  return allURL;
+};
+
+const getURL = async (html) => {
+  const selector = "#gsc_sa_ccl > div.gsc_1usr";
   const $ = cheerio.load(html);
   const content = $(selector);
   const url_data = [];
@@ -33,6 +52,86 @@ const getURL = async (html, selector) => {
     url_data.push(obj);
   });
   return url_data;
+};
+
+// console.log("Number of Articles : ", content.length);
+// console.log("Article");
+// await new Promise((resolve) => setTimeout(resolve, 100));
+
+// articleAll.push(article_data);
+
+ // authorAll.push(authorAllDetail);
+//  console.log(i + 1);
+
+const getAuthorAllDetail = async (URL, author_id) => {
+  const selector = "#gsc_a_b > tr";
+  const html = await sendRequestGetDetail(URL);
+  const content = await getArticleUrl(html, selector);
+  const article_detail = [];
+
+  for (let i = 0; i < content.length; i++) {
+    const article_sub_data = content[i];
+    const detail_page_url = article_sub_data.url;
+    const detail_page_html = await sendRequestGetDetail(detail_page_url);
+    numArticle += 1;
+    const article_data = await getArticleDetail(
+      detail_page_html,
+      detail_page_url,
+      author_id
+    );
+    article_detail.push(article_data);
+  }
+  const authorAllDetail = await getAuthorDetail(html, author_id, URL);
+  authorAllDetail.articles = article_detail;
+
+  return authorAllDetail;
+};
+
+const getArticleUrl = async (html, selector) => {
+  const $ = cheerio.load(html);
+  const content = $(selector);
+  const news_data = [];
+  content.each(function () {
+    const obj = {
+      title: $(this).find("td.gsc_a_t > a").text(),
+      url: "https://scholar.google.com" + $(this).find("a").attr("href"),
+    };
+    news_data.push(obj);
+  });
+  return news_data;
+};
+
+const getAuthorDetail = async (html, num, url) => {
+
+  const $ = cheerio.load(html);
+  const user_scholar_id = await getUserScholarId(url);
+
+  const author_detail = {
+    author_id: num,
+    author_name: $("#gsc_prf_in").text(),
+    department: $("#gsc_prf_i > div:nth-child(2)").text(),
+    subject_area: await getSubjectArea(html),
+    h_index: $(
+      "#gsc_rsb_st > tbody > tr:nth-child(2) > td:nth-child(2)"
+    ).text(),
+    image: $("#gsc_prf_pup-img").attr("src"),
+    citation_by: await getCitationByFromApi(user_scholar_id),
+  };
+
+  return author_detail;
+};
+
+const getSubjectArea = async (html) => {
+  const $ = cheerio.load(html);
+  const subjectArea = [];
+  const subject = $("#gsc_prf_int > a");
+
+  for (let i = 0; i < subject.length; i++) {
+    const obj = $("#gsc_prf_int > a:nth-child(" + (i + 1) + ")").text();
+    subjectArea.push(obj);
+  }
+
+  return subjectArea;
 };
 
 
@@ -59,95 +158,8 @@ const getCitationByFromApi = async (user_scholar_id) => {
 };
 
 
-const getArticleAll = async () => {
-  return articleAll;
-};
-
-const getArticleOfAuthor = async (URL, author_id) => {
-  const selector = "#gsc_a_b > tr";
-  const html = await sendRequestGetDetail(URL);
-  const content = await getArticleUrl(html, selector);
-  const article_detail = [];
-
-  console.log("Number of Articles : ", content.length);
-  console.log("Article");
-  //content.length
-  for (let i = 0; i < 2; i++) {
-    console.log(i + 1);
-    const e = content[i];
-    const detail_page_url = e.url;
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    const detail_page_html = await sendRequestGetDetail(detail_page_url);
-    numArticle += 1;
-    const article_data = await getArticleDetail(
-      detail_page_html,
-      detail_page_url,
-      author_id
-    );
-    articleAll.push(article_data);
-    article_detail.push(article_data);
-  }
-  const articleOfAuthor = await getAuthorDetail(html, author_id, URL);
-  authorAll.push(articleOfAuthor);
-  articleOfAuthor.articles = article_detail;
-  return articleOfAuthor;
-};
-
-const getAuthorDetail = async (html, num, url) => {
-
-  const $ = cheerio.load(html);
-  const user_scholar_id = await getUserScholarId(url);
-
-  const author_detail = {
-    author_id: num,
-    author_name: $("#gsc_prf_in").text(),
-    department: $("#gsc_prf_i > div:nth-child(2)").text(),
-    subject_area: await getSubjectArea(html),
-    h_index: $(
-      "#gsc_rsb_st > tbody > tr:nth-child(2) > td:nth-child(2)"
-    ).text(),
-    image: $("#gsc_prf_pup-img").attr("src"),
-    citation_by: await getCitationByFromApi(user_scholar_id),
-  };
-
-  return author_detail;
-};
-const getSubjectArea = async (html) => {
-  const $ = cheerio.load(html);
-  const subjectArea = [];
-  const subject = $("#gsc_prf_int > a");
-
-  for (let i = 0; i < subject.length; i++) {
-    const obj = $("#gsc_prf_int > a:nth-child(" + (i + 1) + ")").text();
-    subjectArea.push(obj);
-  }
-
-  return subjectArea;
-};
 
 
-
-const getArticleUrl = async (html, selector) => {
-  const $ = cheerio.load(html);
-  const content = $(selector);
-  const news_data = [];
-  content.each(function () {
-    const obj = {
-      title: $(this).find("td.gsc_a_t > a").text(),
-      url: "https://scholar.google.com" + $(this).find("a").attr("href"),
-    };
-    news_data.push(obj);
-  });
-  return news_data;
-};
-
-const getAuthor = async (author) => {
-  const author_data = author.split(",");
-  for (let i = 0; i < author_data.length; i++) {
-    author_data[i] = author_data[i].trim();
-  }
-  return author_data;
-};
 
 const getArticleDetail = async (html, url, author_id) => {
   const $ = cheerio.load(html);
@@ -178,28 +190,22 @@ const getArticleDetail = async (html, url, author_id) => {
   return article_data;
 };
 
-const sendRequestGetDetail = async (URL) => {
-  // const response = await axios.get({URL});
-  const randomUserAgent = new userAgents({
-    deviceCategory: "desktop",
-  }).toString();
-
-  const response = await axios.request({
-    method: "GET",
-    url: URL,
-    responseType: "arraybuffer",
-    responseEncoding: "binary",
-    headers: {
-      "User-Agent": randomUserAgent,
-    },
-  });
-  const html = iconv.decode(response.data, "utf-8");
-  
-  return html;
+const getAuthor = async (author) => {
+  const author_data = author.split(",");
+  for (let i = 0; i < author_data.length; i++) {
+    author_data[i] = author_data[i].trim();
+  }
+  return author_data;
 };
 
+
+const getArticleAll = async () => {
+  return articleAll;
+};
+
+
 module.exports = {
-  getArticleOfAuthor,
+  getAuthorAllDetail,
   getAllAuthorURL,
   sendRequestGetDetail,
   getAuthorDetail,

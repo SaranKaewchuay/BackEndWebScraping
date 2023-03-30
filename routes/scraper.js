@@ -43,7 +43,7 @@ const insertDatatoDb = async (all) => {
     return await newAuthor.save();
   });
 };
-// console.log("Author ", i + 1, " : " + authorURL[i].name)
+
 
 router.get("/", async (req, res) => {
   
@@ -52,6 +52,8 @@ router.get("/", async (req, res) => {
   let authorAllDetail = [];
   console.log("Scraper Start")
   for (let i = 0; i < 2; i++) {
+
+    console.log("Author ", i + 1, " : " + authorURL[i].name)
     const number_author = i + 1;
     const data = await getAuthorAllDetail(authorURL[i].url, number_author);
     authorAllDetail.push(data)

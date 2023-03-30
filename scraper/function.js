@@ -68,8 +68,11 @@ const getAuthorAllDetail = async (URL, author_id) => {
   const html = await sendRequestGetDetail(URL);
   const content = await getArticleUrl(html, selector);
   const article_detail = [];
-
-  for (let i = 0; i < content.length; i++) {
+  
+  //content.length
+  console.log("Number of Articles : ", content.length);
+  for (let i = 0; i < 2; i++) {
+    console.log(i + 1);
     const article_sub_data = content[i];
     const detail_page_url = article_sub_data.url;
     const detail_page_html = await sendRequestGetDetail(detail_page_url);

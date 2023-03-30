@@ -46,12 +46,13 @@ const insertDatatoDb = async (all) => {
 
 
 router.get("/", async (req, res) => {
-  
+
   const startURL = "https://scholar.google.com/citations?view_op=view_org&org=16635630670053173100&hl=en&oi=io";
   const authorURL = await getAllAuthorURL(startURL);
   let authorAllDetail = [];
   console.log("Scraper Start")
-  for (let i = 0; i < 2; i++) {
+
+  for (let i = 0; i < authorURL.length; i++) {
 
     console.log("Author ", i + 1, " : " + authorURL[i].name)
     const number_author = i + 1;

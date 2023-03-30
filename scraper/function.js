@@ -8,8 +8,6 @@ const search = new SerpApi.GoogleSearch(
 );
 
 let numArticle = null;
-const articleAll = [];
-const authorAll = [];
 
 const sendRequestGetDetail = async (URL) => {
   const randomUserAgent = new userAgents({
@@ -26,10 +24,9 @@ const sendRequestGetDetail = async (URL) => {
     },
   });
   const html = iconv.decode(response.data, "utf-8");
-  
+
   return html;
 };
-
 
 const getAllAuthorURL = async (url) => {
   const html = await sendRequestGetDetail(url);
@@ -46,32 +43,22 @@ const getURL = async (html) => {
   content.each(function () {
     const obj = {
       name: $(this).find("div > div > h3 > a").text(),
-      url:
-        "https://scholar.google.com" + $(this).find("div > a").attr("href"),
+      url: "https://scholar.google.com" + $(this).find("div > a").attr("href"),
     };
     url_data.push(obj);
   });
   return url_data;
 };
 
-// console.log("Number of Articles : ", content.length);
-// console.log("Article");
-// await new Promise((resolve) => setTimeout(resolve, 100));
-
-// articleAll.push(article_data);
-
- // authorAll.push(authorAllDetail);
-//  console.log(i + 1);
-
 const getAuthorAllDetail = async (URL, author_id) => {
   const selector = "#gsc_a_b > tr";
   const html = await sendRequestGetDetail(URL);
   const content = await getArticleUrl(html, selector);
   const article_detail = [];
-  
+
   //content.length
   console.log("Number of Articles : ", content.length);
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < 6; i++) {
     console.log(i + 1);
     const article_sub_data = content[i];
     const detail_page_url = article_sub_data.url;
@@ -104,8 +91,19 @@ const getArticleUrl = async (html, selector) => {
   return news_data;
 };
 
-const getAuthorDetail = async (html, num, url) => {
+const check_src_image = async (html) => {
+  const $ = cheerio.load(html);
+  let src;
+  let image = $("#gsc_prf_pup-img").attr("src");
+  if (image.indexOf("https://scholar.googleusercontent.com") == -1) {
+    src = "https://scholar.googleusercontent.com" + image;
+  } else {
+    src = image;
+  }
+  return src;
+};
 
+const getAuthorDetail = async (html, num, url) => {
   const $ = cheerio.load(html);
   const user_scholar_id = await getUserScholarId(url);
 
@@ -117,7 +115,7 @@ const getAuthorDetail = async (html, num, url) => {
     h_index: $(
       "#gsc_rsb_st > tbody > tr:nth-child(2) > td:nth-child(2)"
     ).text(),
-    image: $("#gsc_prf_pup-img").attr("src"),
+    image: await check_src_image(html),
     citation_by: await getCitationByFromApi(user_scholar_id),
   };
 
@@ -137,7 +135,6 @@ const getSubjectArea = async (html) => {
   return subjectArea;
 };
 
-
 const getUserScholarId = async (url) => {
   const regex = /user=([\w-]+)/;
   const match = url.match(regex);
@@ -152,17 +149,17 @@ const getCitationByFromApi = async (user_scholar_id) => {
   };
 
   return new Promise((resolve, reject) => {
-    search.json(params, function (data) {
-      resolve(data["cited_by"]);
-    }, function (error) {
-      reject(error);
-    });
+    search.json(
+      params,
+      function (data) {
+        resolve(data["cited_by"]);
+      },
+      function (error) {
+        reject(error);
+      }
+    );
   });
 };
-
-
-
-
 
 const getArticleDetail = async (html, url, author_id) => {
   const $ = cheerio.load(html);
@@ -201,17 +198,10 @@ const getAuthor = async (author) => {
   return author_data;
 };
 
-
-const getArticleAll = async () => {
-  return articleAll;
-};
-
-
 module.exports = {
   getAuthorAllDetail,
   getAllAuthorURL,
   sendRequestGetDetail,
   getAuthorDetail,
   getArticleDetail,
-  getArticleAll,
 };

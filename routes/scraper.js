@@ -46,27 +46,32 @@ const insertDatatoDb = async (all) => {
 
 
 router.get("/", async (req, res) => {
+  try {
+    const startURL = "https://scholar.google.com/citations?view_op=view_org&org=16635630670053173100&hl=en&oi=io";
+    const authorURL = await getAllAuthorURL(startURL);
+    let authorAllDetail = [];
+    console.log("Scraper Start")
 
-  const startURL = "https://scholar.google.com/citations?view_op=view_org&org=16635630670053173100&hl=en&oi=io";
-  const authorURL = await getAllAuthorURL(startURL);
-  let authorAllDetail = [];
-  console.log("Scraper Start")
+    for (let i = 0; i < authorURL.length; i++) {
+      console.log("Author ", i + 1, " : " + authorURL[i].name)
+      const number_author = i + 1;
+      const data = await getAuthorAllDetail(authorURL[i].url, number_author);
+      authorAllDetail.push(data)
+      await insertDatatoDb(authorAllDetail)
+      authorAllDetail = []
+    }
+    console.log("Finish")
 
-  for (let i = 0; i < authorURL.length; i++) {
-
-    console.log("Author ", i + 1, " : " + authorURL[i].name)
-    const number_author = i + 1;
-    const data = await getAuthorAllDetail(authorURL[i].url, number_author);
-    authorAllDetail.push(data)
-    await insertDatatoDb(authorAllDetail)
-    authorAllDetail = []
+    res.status(200).json({
+      meseage: "successful",    
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Unable to extract data due to website Scholar.Google From detecting the operation of the program automatical.",
+    });
   }
-  console.log("Finish")
-
-  res.status(200).json({
-    meseage: "successful",    
-  });
-
 });
+
 
 module.exports = router;

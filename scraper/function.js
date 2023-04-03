@@ -2,10 +2,6 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const iconv = require("iconv-lite");
 const userAgents = require("user-agents");
-const SerpApi = require("google-search-results-nodejs");
-const search = new SerpApi.GoogleSearch(
-  "bb9dd3ebbad1ab883ed7fe0279b5e08c019d1c165d8801dc68547aed0b5e8904"
-);
 
 let numArticle = null;
 
@@ -57,8 +53,8 @@ const getAuthorAllDetail = async (URL, author_id) => {
   const article_detail = [];
 
   //content.length
-  console.log("Number of Articles : ", content.length);
-  for (let i = 0; i < 6; i++) {
+  console.log("Scraping Articles: ");
+  for (let i = 0; i < 3; i++) {
     console.log(i + 1);
     const article_sub_data = content[i];
     const detail_page_url = article_sub_data.url;
@@ -76,6 +72,8 @@ const getAuthorAllDetail = async (URL, author_id) => {
 
   return authorAllDetail;
 };
+
+
 
 const getArticleUrl = async (html, selector) => {
   const $ = cheerio.load(html);
@@ -105,8 +103,7 @@ const check_src_image = async (html) => {
 
 const getAuthorDetail = async (html, num, url) => {
   const $ = cheerio.load(html);
-  const user_scholar_id = await getUserScholarId(url);
-
+  const userID = await getUserScholarId(url);
   const author_detail = {
     author_id: num,
     author_name: $("#gsc_prf_in").text(),
@@ -116,8 +113,9 @@ const getAuthorDetail = async (html, num, url) => {
       "#gsc_rsb_st > tbody > tr:nth-child(2) > td:nth-child(2)"
     ).text(),
     image: await check_src_image(html),
-    citation_by: await getCitationByFromApi(user_scholar_id),
+    citation_by: await getCitationByFromApi(userID),
   };
+  
 
   return author_detail;
 };
@@ -141,6 +139,11 @@ const getUserScholarId = async (url) => {
   const user_scholar_id = match[1];
   return user_scholar_id;
 };
+
+const SerpApi = require("google-search-results-nodejs");
+const search = new SerpApi.GoogleSearch(
+  "5c609ed064ace1fca661d3ae20f2b72fe58ba00c129979a7d6f568c2069f10d6"
+);
 
 const getCitationByFromApi = async (user_scholar_id) => {
   const params = {

@@ -50,7 +50,8 @@ router.get("/", async (req, res) => {
     const startURL = "https://scholar.google.com/citations?view_op=view_org&org=16635630670053173100&hl=en&oi=io";
     const authorURL = await getAllAuthorURL(startURL);
     let authorAllDetail = [];
-    console.log("Scraper Start")
+    console.log("")
+    console.log("Start Scraping Researcher Data \n")
 
     for (let i = 0; i < authorURL.length; i++) {
       console.log("Author ", i + 1, " : " + authorURL[i].name)
@@ -58,9 +59,14 @@ router.get("/", async (req, res) => {
       const data = await getAuthorAllDetail(authorURL[i].url, number_author);
       authorAllDetail.push(data)
       await insertDatatoDb(authorAllDetail)
+      console.log("")
+      console.log("Data insertion was completed successfully")
+      console.log("Researcher name: ", authorURL[i].name)
+      console.log("")
       authorAllDetail = []
     }
-    console.log("Finish")
+    console.log("")
+    console.log("Finish Scraping Researcher Data")
 
     res.status(200).json({
       meseage: "successful",    
@@ -68,7 +74,7 @@ router.get("/", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({
-      message: "Unable to extract data due to website Scholar.Google From detecting the operation of the program automatical.",
+      message: "Unable to extract data",
     });
   }
 });

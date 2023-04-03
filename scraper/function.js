@@ -54,7 +54,7 @@ const getAuthorAllDetail = async (URL, author_id) => {
 
   //content.length
   console.log("Scraping Articles: ");
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < content.length; i++) {
     console.log(i + 1);
     const article_sub_data = content[i];
     const detail_page_url = article_sub_data.url;

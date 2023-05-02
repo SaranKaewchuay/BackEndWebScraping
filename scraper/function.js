@@ -1,64 +1,67 @@
-const axios = require("axios");
+const puppeteer = require("puppeteer");
 const cheerio = require("cheerio");
-const iconv = require("iconv-lite");
 const userAgents = require("user-agents");
 
 let numArticle = null;
 
-const sendRequestGetDetail = async (URL) => {
-  const randomUserAgent = new userAgents({
-    deviceCategory: "desktop",
-  }).toString();
-
-  const response = await axios.request({
-    method: "GET",
-    url: URL,
-    responseType: "arraybuffer",
-    responseEncoding: "binary",
-    headers: {
-      "User-Agent": randomUserAgent,
-    },
-  });
-  const html = iconv.decode(response.data, "utf-8");
-
-  return html;
-};
-
 const getAllAuthorURL = async (url) => {
-  const html = await sendRequestGetDetail(url);
+  const browser = await puppeteer.launch({ headless: "new" });
+  const page = await browser.newPage();
+  await page.goto(url);
+  const html = await page.content();
   const allURL = await getURL(html);
+  await page.close();
   return allURL;
 };
 
+
 const getURL = async (html) => {
   const selector = "#gsc_sa_ccl > div.gsc_1usr";
-  const $ = cheerio.load(html);
-  const content = $(selector);
-  const url_data = [];
+  const browser = await puppeteer.launch({ headless: "new" });
+  const page = await browser.newPage();
+  await page.setContent(html);
+  const content = await page.$$(selector);
+  const news_data = [];
 
-  content.each(function () {
+  for (const item of content) {
     const obj = {
-      name: $(this).find("div > div > h3 > a").text(),
-      url: "https://scholar.google.com" + $(this).find("div > a").attr("href"),
+      name: await item.$eval("div > div > h3 > a", element => element.textContent),
+      url: "https://scholar.google.com" + await item.$eval("div > a", element => element.getAttribute("href")),
     };
-    url_data.push(obj);
-  });
-  return url_data;
+    news_data.push(obj);
+  }
+
+  await page.close();
+  return news_data;
 };
 
+
+
 const getAuthorAllDetail = async (URL, author_id) => {
+  const browser = await puppeteer.launch({ headless: "new" });
+  const page = await browser.newPage();
+  await page.goto(URL, { waitUntil: "networkidle2" });
+
+  while (await page.$eval("#gsc_bpf_more", (button) => !button.disabled)) {
+    await page.click("#gsc_bpf_more");
+    await page.waitForTimeout(1500);
+    await page.waitForSelector("#gsc_a_b");
+  }
+  const html = await page.content();
   const selector = "#gsc_a_b > tr";
-  const html = await sendRequestGetDetail(URL);
   const content = await getArticleUrl(html, selector);
   const article_detail = [];
 
   //content.length
+  console.log("Number of Articles: ",content.length);
   console.log("Scraping Articles: ");
   for (let i = 0; i < content.length; i++) {
     console.log(i + 1);
     const article_sub_data = content[i];
     const detail_page_url = article_sub_data.url;
-    const detail_page_html = await sendRequestGetDetail(detail_page_url);
+    await page.goto(detail_page_url, { waitUntil: "networkidle2" });
+    await page.waitForTimeout(1360);
+    const detail_page_html = await page.content();
     numArticle += 1;
     const article_data = await getArticleDetail(
       detail_page_html,
@@ -72,8 +75,6 @@ const getAuthorAllDetail = async (URL, author_id) => {
 
   return authorAllDetail;
 };
-
-
 
 const getArticleUrl = async (html, selector) => {
   const $ = cheerio.load(html);
@@ -115,7 +116,6 @@ const getAuthorDetail = async (html, num, url) => {
     image: await check_src_image(html),
     citation_by: await getCitationByFromApi(userID),
   };
-  
 
   return author_detail;
 };
@@ -142,7 +142,7 @@ const getUserScholarId = async (url) => {
 
 const SerpApi = require("google-search-results-nodejs");
 const search = new SerpApi.GoogleSearch(
-  "5c609ed064ace1fca661d3ae20f2b72fe58ba00c129979a7d6f568c2069f10d6"
+  "bb9dd3ebbad1ab883ed7fe0279b5e08c019d1c165d8801dc68547aed0b5e8904"
 );
 
 const getCitationByFromApi = async (user_scholar_id) => {
@@ -204,7 +204,6 @@ const getAuthor = async (author) => {
 module.exports = {
   getAuthorAllDetail,
   getAllAuthorURL,
-  sendRequestGetDetail,
   getAuthorDetail,
   getArticleDetail,
 };

@@ -47,12 +47,13 @@ const insertDatatoDb = async (all) => {
 
 router.get("/", async (req, res) => {
   try {
-    const startURL = "https://scholar.google.com/citations?view_op=view_org&org=16635630670053173100&hl=en&oi=io";
+    const startURL = "https://scholar.google.com/citations?view_op=view_org&hl=en&org=16635630670053173100&after_author=d71DAWn7__8J&astart=20";
     const authorURL = await getAllAuthorURL(startURL);
     let authorAllDetail = [];
     console.log("")
     console.log("Start Scraping Researcher Data \n")
 
+    //authorURL.length
     for (let i = 0; i < authorURL.length; i++) {
       console.log("Author ", i + 1, " : " + authorURL[i].name)
       const number_author = i + 1;

@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 8080;
 mongoose.connect('mongodb+srv://root:1234@cluster0.l78dbvc.mongodb.net/test', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  dbName: 'ScraperDB'
+  dbName: 'wu-researcher'
 })
   .then(() => console.log('Connected to MongoDB'))
   .catch((err) => console.error(err));

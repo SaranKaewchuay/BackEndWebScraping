@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { getAuthorAllDetail, getAllAuthorURL } = require("../scraper/function");
+const { getAuthorAllDetail, getAllAuthorURL,  getURLScholar } = require("../scraper/function");
 
 const Author = require('../models/Author.js');
 const Article = require('../models/Article.js');
@@ -47,14 +47,13 @@ const insertDatatoDb = async (all) => {
 
 router.get("/", async (req, res) => {
   try {
-    const startURL = "https://scholar.google.com/citations?view_op=view_org&hl=en&org=16635630670053173100&after_author=d71DAWn7__8J&astart=20";
-    const authorURL = await getAllAuthorURL(startURL);
+    const authorURL = await  getURLScholar();
     let authorAllDetail = [];
     console.log("")
     console.log("Start Scraping Researcher Data \n")
 
     //authorURL.length
-    for (let i = 0; i < authorURL.length; i++) {
+    for (let i = 0; i < 3; i++) {
       console.log("Author ", i + 1, " : " + authorURL[i].name)
       const number_author = i + 1;
       const data = await getAuthorAllDetail(authorURL[i].url, number_author);

@@ -1,8 +1,37 @@
 const puppeteer = require("puppeteer");
 const cheerio = require("cheerio");
 const userAgents = require("user-agents");
+const axios = require("axios");
 
 let numArticle = null;
+
+const getURLScholar = async () => {
+  let data = [];
+  try {
+    const response = await axios.get(
+      "https://iriedoc.wu.ac.th/data/apiwris/RPS_PERSON.php"
+    );
+    data = response.data;
+  } catch (error) {
+    console.log(error);
+  }
+
+  const scholar = data
+    .map((element) => ({
+      name: element.TITLEENG + element.FNAMEENG +" "+ element.LNAMEENG,
+      url: element.GGSCHOLAR,
+    }))
+    .filter((scholar) => scholar.url)
+    .map((scholar) => ({
+      ...scholar,
+      url:
+        scholar.url.includes("=th") || scholar.url.includes("=en")
+          ? scholar.url.replace("=th", "=en")
+          : scholar.url + "&hl=en",
+    }));
+
+  return scholar;
+};
 
 const getAllAuthorURL = async (url) => {
   const browser = await puppeteer.launch({ headless: "new" });
@@ -14,7 +43,6 @@ const getAllAuthorURL = async (url) => {
   return allURL;
 };
 
-
 const getURL = async (html) => {
   const selector = "#gsc_sa_ccl > div.gsc_1usr";
   const browser = await puppeteer.launch({ headless: "new" });
@@ -25,8 +53,15 @@ const getURL = async (html) => {
 
   for (const item of content) {
     const obj = {
-      name: await item.$eval("div > div > h3 > a", element => element.textContent),
-      url: "https://scholar.google.com" + await item.$eval("div > a", element => element.getAttribute("href")),
+      name: await item.$eval(
+        "div > div > h3 > a",
+        (element) => element.textContent
+      ),
+      url:
+        "https://scholar.google.com" +
+        (await item.$eval("div > a", (element) =>
+          element.getAttribute("href")
+        )),
     };
     news_data.push(obj);
   }
@@ -34,8 +69,6 @@ const getURL = async (html) => {
   await page.close();
   return news_data;
 };
-
-
 
 const getAuthorAllDetail = async (URL, author_id) => {
   const browser = await puppeteer.launch({ headless: "new" });
@@ -53,7 +86,7 @@ const getAuthorAllDetail = async (URL, author_id) => {
   const article_detail = [];
 
   //content.length
-  console.log("Number of Articles: ",content.length);
+  console.log("Number of Articles: ", content.length);
   console.log("Scraping Articles: ");
   for (let i = 0; i < content.length; i++) {
     console.log(i + 1);
@@ -202,6 +235,7 @@ const getAuthor = async (author) => {
 };
 
 module.exports = {
+  getURLScholar,
   getAuthorAllDetail,
   getAllAuthorURL,
   getAuthorDetail,

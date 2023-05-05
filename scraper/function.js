@@ -1,6 +1,5 @@
 const puppeteer = require("puppeteer");
 const cheerio = require("cheerio");
-const userAgents = require("user-agents");
 const axios = require("axios");
 
 let numArticle = null;
@@ -135,9 +134,108 @@ const check_src_image = async (html) => {
   return src;
 };
 
+
+
+const getGraph = async (url) => {
+  let graph = [];
+  const browser = await puppeteer.launch({ headless: "new" });
+  const page = await browser.newPage();
+  await page.goto(`${url}#d=gsc_md_hist`);
+  const html = await page.content();
+  const $ = cheerio.load(html);
+
+  const years = $("#gsc_md_hist_c > div > div.gsc_md_hist_w > div > span")
+    .map((_, el) => $(el).text()).get().sort((a, b) => b - a);
+
+  const content_graph = $("#gsc_md_hist_c > div > div.gsc_md_hist_w > div > a");
+  const citations = content_graph
+    .map(function (i, el) {
+      const { style } = el.attribs;
+      const regex = /z-index:(\d+)/;
+      const match = style.match(regex);
+      const index = match[1];
+
+      return {
+        value: $(el).text(),
+        index: index,
+      };
+    })
+    .get();
+
+    for (let i = citations.length - 1; i >= 0; i--) {
+      const yearIndex = Number(citations[i].index) - 1;
+      const obj = {
+        year: years[yearIndex],
+        citations: citations[i],
+      };
+      graph.push(obj);
+    }
+    
+
+  await browser.close();
+
+  graph.sort((a, b) => parseInt(b.citations.index) - parseInt(a.citations.index)) ;
+  graph = graph.map((obj) => {
+    const { index, ...citations } = obj.citations;
+    return { year: obj.year, citations: citations.value };
+  });
+  
+  return graph;
+};
+
+const getSubTable = async (url) => {
+  const browser = await puppeteer.launch({ headless: "new" });
+  const page = await browser.newPage();
+  await page.goto(url, { waitUntil: "networkidle2" });
+  const html = await page.content();
+  const $ = cheerio.load(html);
+
+  const table = [
+    {
+      citations: {
+        all: $(
+          "#gsc_rsb_st > tbody > tr:nth-child(1) > td:nth-child(2)"
+        ).text(),
+        since_2018: $(
+          "#gsc_rsb_st > tbody > tr:nth-child(1) > td:nth-child(3)"
+        ).text(),
+      },
+    },
+    {
+      h_index: {
+        all: $(
+          "#gsc_rsb_st > tbody > tr:nth-child(2) > td:nth-child(2)"
+        ).text(),
+        since_2018: $(
+          "#gsc_rsb_st > tbody > tr:nth-child(2) > td:nth-child(3)"
+        ).text(),
+      },
+    },
+    {
+      i10_index: {
+        all: $(
+          "#gsc_rsb_st > tbody > tr:nth-child(3) > td:nth-child(2)"
+        ).text(),
+        since_2018: $(
+          "#gsc_rsb_st > tbody > tr:nth-child(3) > td:nth-child(3)"
+        ).text(),
+      },
+    },
+  ];
+
+  return table;
+}
+
+const getCitation = async (url) => {
+  const citation_by = {};
+  citation_by.table = await getSubTable(url);
+  citation_by.graph = await getGraph(url);
+  return citation_by;
+};
+
+
 const getAuthorDetail = async (html, num, url) => {
   const $ = cheerio.load(html);
-  const userID = await getUserScholarId(url);
   const author_detail = {
     author_id: num,
     author_name: $("#gsc_prf_in").text(),
@@ -147,7 +245,7 @@ const getAuthorDetail = async (html, num, url) => {
       "#gsc_rsb_st > tbody > tr:nth-child(2) > td:nth-child(2)"
     ).text(),
     image: await check_src_image(html),
-    citation_by: await getCitationByFromApi(userID),
+    citation_by: await getCitation(url)
   };
 
   return author_detail;
@@ -164,37 +262,6 @@ const getSubjectArea = async (html) => {
   }
 
   return subjectArea;
-};
-
-const getUserScholarId = async (url) => {
-  const regex = /user=([\w-]+)/;
-  const match = url.match(regex);
-  const user_scholar_id = match[1];
-  return user_scholar_id;
-};
-
-const SerpApi = require("google-search-results-nodejs");
-const search = new SerpApi.GoogleSearch(
-  "bb9dd3ebbad1ab883ed7fe0279b5e08c019d1c165d8801dc68547aed0b5e8904"
-);
-
-const getCitationByFromApi = async (user_scholar_id) => {
-  const params = {
-    engine: "google_scholar_author",
-    author_id: user_scholar_id,
-  };
-
-  return new Promise((resolve, reject) => {
-    search.json(
-      params,
-      function (data) {
-        resolve(data["cited_by"]);
-      },
-      function (error) {
-        reject(error);
-      }
-    );
-  });
 };
 
 const getArticleDetail = async (html, url, author_id) => {

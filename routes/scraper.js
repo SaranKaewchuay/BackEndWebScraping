@@ -53,7 +53,7 @@ router.get("/", async (req, res) => {
     console.log("Start Scraping Researcher Data \n")
 
     //authorURL.length
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < authorURL.length; i++) {
       console.log("Author ", i + 1, " : " + authorURL[i].name)
       const number_author = i + 1;
       const data = await getAuthorAllDetail(authorURL[i].url, number_author);

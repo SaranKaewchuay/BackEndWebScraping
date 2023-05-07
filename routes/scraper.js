@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { getAuthorAllDetail, getAllAuthorURL,  getURLScholar } = require("../scraper/function");
+const { getAuthorAllDetail, getURLScholar } = require("../scraper/function");
 
 const Author = require('../models/Author.js');
 const Article = require('../models/Article.js');
@@ -53,10 +53,12 @@ router.get("/", async (req, res) => {
     console.log("Start Scraping Researcher Data \n")
 
     //authorURL.length
-    for (let i = 0; i < authorURL.length; i++) {
-      console.log("Author ", i + 1, " : " + authorURL[i].name)
+    for (let i = 9; i < authorURL.length; i++) {
+      console.log("Author ", i + 1, " / ",authorURL.length, ": " + authorURL[i].name)
       const number_author = i + 1;
-      const data = await getAuthorAllDetail(authorURL[i].url, number_author);
+      console.log("authorURL[i] = ",authorURL[i].url)
+      const data = await getAuthorAllDetail(authorURL[i], number_author);
+      
       authorAllDetail.push(data)
       await insertDatatoDb(authorAllDetail)
       console.log("")

@@ -4,6 +4,47 @@ const axios = require("axios");
 
 let numArticle = null;
 
+
+const getUserScholarId = async (url) => {
+  const regex = /user=([\w-]+)/;
+  const match = url.match(regex);
+  if (match) {
+    return match[1];
+  } else {
+    return null;
+  }
+}
+
+async function checkElementExists(page, selector) {
+  const element = await page.$(selector);
+  return element !== null;
+}
+
+const check_url = async (authorObject) => {
+  let url_checked
+  const name = authorObject.name.split('.').pop().trim().split(' ');
+  const browser = await puppeteer.launch({ headless: true });
+  const page = await browser.newPage();
+  const url = `https://scholar.google.com/scholar?hl=th&as_sdt=0%2C5&q=${name[0]}+${name[1]}`;
+  console.log('url = ',url);
+  await page.goto(url, { waitUntil: "networkidle2" });
+  const selector ="#gs_res_ccl_mid > div:nth-child(1) > table > tbody > tr > td:nth-child(2) > h4 > a"
+
+  if (await checkElementExists(page,selector)) {
+    const $ = cheerio.load(await page.content());
+    const link = `https://scholar.google.com${$(selector).attr("href")}`;
+    const id_url_current = await getUserScholarId(link);
+    const id_url_api = await getUserScholarId(authorObject.url);
+    url_checked = (id_url_api !== id_url_current) ? `https://scholar.google.com/citations?user=${id_url_current}&hl=en&oi=ao` : authorObject.url;
+  } else {
+    url_checked = authorObject.url
+  }
+  await browser.close();
+
+  return url_checked;
+}
+
+
 const getURLScholar = async () => {
   let data = [];
   try {
@@ -32,57 +73,27 @@ const getURLScholar = async () => {
   return scholar;
 };
 
-const getAllAuthorURL = async (url) => {
+const getAuthorAllDetail = async (authorObject, author_id) => {
   const browser = await puppeteer.launch({ headless: "new" });
   const page = await browser.newPage();
-  await page.goto(url);
-  const html = await page.content();
-  const allURL = await getURL(html);
-  await page.close();
-  return allURL;
-};
+  let url_checked = await check_url(authorObject)
+  await page.goto(url_checked , { waitUntil: "networkidle2" });
 
-const getURL = async (html) => {
-  const selector = "#gsc_sa_ccl > div.gsc_1usr";
-  const browser = await puppeteer.launch({ headless: "new" });
-  const page = await browser.newPage();
-  await page.setContent(html);
-  const content = await page.$$(selector);
-  const news_data = [];
-
-  for (const item of content) {
-    const obj = {
-      name: await item.$eval(
-        "div > div > h3 > a",
-        (element) => element.textContent
-      ),
-      url:
-        "https://scholar.google.com" +
-        (await item.$eval("div > a", (element) =>
-          element.getAttribute("href")
-        )),
-    };
-    news_data.push(obj);
+  try {
+    while (await page.$eval("#gsc_bpf_more", (button) => !button.disabled)) {
+      await page.click("#gsc_bpf_more");
+      await page.waitForTimeout(1500);
+      await page.waitForSelector("#gsc_a_b");
+    }  
+  } catch (error) {
+    console.error(`Error: ${error.message}`);
   }
 
-  await page.close();
-  return news_data;
-};
-
-const getAuthorAllDetail = async (URL, author_id) => {
-  const browser = await puppeteer.launch({ headless: "new" });
-  const page = await browser.newPage();
-  await page.goto(URL, { waitUntil: "networkidle2" });
-
-  while (await page.$eval("#gsc_bpf_more", (button) => !button.disabled)) {
-    await page.click("#gsc_bpf_more");
-    await page.waitForTimeout(1500);
-    await page.waitForSelector("#gsc_a_b");
-  }
   const html = await page.content();
   const selector = "#gsc_a_b > tr";
   const content = await getArticleUrl(html, selector);
   const article_detail = [];
+  let authorAllDetail
 
   //content.length
   console.log("Number of Articles: ", content.length);
@@ -102,8 +113,9 @@ const getAuthorAllDetail = async (URL, author_id) => {
     );
     article_detail.push(article_data);
   }
-  const authorAllDetail = await getAuthorDetail(html, author_id, URL);
+  authorAllDetail = await getAuthorDetail(html, author_id, url_checked);
   authorAllDetail.articles = article_detail;
+  await browser.close();
 
   return authorAllDetail;
 };
@@ -134,13 +146,11 @@ const check_src_image = async (html) => {
   return src;
 };
 
-
-
 const getGraph = async (url) => {
   let graph = [];
   const browser = await puppeteer.launch({ headless: "new" });
   const page = await browser.newPage();
-  await page.goto(`${url}#d=gsc_md_hist`);
+  await page.goto((`${url}#d=gsc_md_hist`));
   const html = await page.content();
   const $ = cheerio.load(html);
 
@@ -179,7 +189,7 @@ const getGraph = async (url) => {
     const { index, ...citations } = obj.citations;
     return { year: obj.year, citations: citations.value };
   });
-  
+
   return graph;
 };
 
@@ -222,6 +232,7 @@ const getSubTable = async (url) => {
       },
     },
   ];
+  await browser.close();
 
   return table;
 }
@@ -304,7 +315,6 @@ const getAuthor = async (author) => {
 module.exports = {
   getURLScholar,
   getAuthorAllDetail,
-  getAllAuthorURL,
   getAuthorDetail,
   getArticleDetail,
 };

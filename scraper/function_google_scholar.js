@@ -4,7 +4,6 @@ const axios = require("axios");
 
 let numArticle = null;
 
-
 const getUserScholarId = async (url) => {
   const regex = /user=([\w-]+)/;
   const match = url.match(regex);
@@ -13,7 +12,7 @@ const getUserScholarId = async (url) => {
   } else {
     return null;
   }
-}
+};
 
 async function checkElementExists(page, selector) {
   const element = await page.$(selector);
@@ -21,29 +20,32 @@ async function checkElementExists(page, selector) {
 }
 
 const check_url = async (authorObject) => {
-  let url_checked
-  const name = authorObject.name.split('.').pop().trim().split(' ');
+  let url_checked;
+  const name = authorObject.name.split(".").pop().trim().split(" ");
   const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
   const url = `https://scholar.google.com/scholar?hl=th&as_sdt=0%2C5&q=${name[0]}+${name[1]}`;
-  console.log('url = ',url);
   await page.goto(url, { waitUntil: "networkidle2" });
-  const selector ="#gs_res_ccl_mid > div:nth-child(1) > table > tbody > tr > td:nth-child(2) > h4 > a"
+  const selector =
+    "#gs_res_ccl_mid > div:nth-child(1) > table > tbody > tr > td:nth-child(2) > h4 > a";
 
-  if (await checkElementExists(page,selector)) {
+  if (await checkElementExists(page, selector)) {
     const $ = cheerio.load(await page.content());
     const link = `https://scholar.google.com${$(selector).attr("href")}`;
     const id_url_current = await getUserScholarId(link);
     const id_url_api = await getUserScholarId(authorObject.url);
-    url_checked = (id_url_api !== id_url_current) ? `https://scholar.google.com/citations?user=${id_url_current}&hl=en&oi=ao` : authorObject.url;
+    url_checked =
+      id_url_api !== id_url_current
+        ? `https://scholar.google.com/citations?user=${id_url_current}&hl=en&oi=ao`
+        : authorObject.url;
   } else {
-    url_checked = authorObject.url
+    url_checked = authorObject.url;
   }
+  console.log("url = ", url_checked);
   await browser.close();
 
   return url_checked;
-}
-
+};
 
 const getURLScholar = async () => {
   let data = [];
@@ -58,7 +60,7 @@ const getURLScholar = async () => {
 
   const scholar = data
     .map((element) => ({
-      name: element.TITLEENG + element.FNAMEENG +" "+ element.LNAMEENG,
+      name: element.TITLEENG + element.FNAMEENG + " " + element.LNAMEENG,
       url: element.GGSCHOLAR,
     }))
     .filter((scholar) => scholar.url)
@@ -73,51 +75,81 @@ const getURLScholar = async () => {
   return scholar;
 };
 
+async function scrapeMultiplePages(urls) {
+  const promises = urls.map((url) => scrapePage(url));
+  return Promise.all(promises);
+}
+
 const getAuthorAllDetail = async (authorObject, author_id) => {
   const browser = await puppeteer.launch({ headless: "new" });
   const page = await browser.newPage();
-  let url_checked = await check_url(authorObject)
-  await page.goto(url_checked , { waitUntil: "networkidle2" });
-
+  let url_checked = await check_url(authorObject);
+  // await page.goto(url_checked , { waitUntil: "networkidle2" });
+  let authorAllDetail;
+  let url_not_ready;
   try {
-    while (await page.$eval("#gsc_bpf_more", (button) => !button.disabled)) {
-      await page.click("#gsc_bpf_more");
-      await page.waitForTimeout(1500);
-      await page.waitForSelector("#gsc_a_b");
-    }  
+    const response = await page.goto(url_checked, {
+      waitUntil: "networkidle2",
+    });
+    if (response.ok()) {
+      try {
+        while (
+          await page.$eval("#gsc_bpf_more", (button) => !button.disabled)
+        ) {
+          await page.click("#gsc_bpf_more");
+          await page.waitForTimeout(1500);
+          await page.waitForSelector("#gsc_a_b");
+        }
+      } catch (error) {
+        console.error(`Error: ${error.message}`);
+      }
+
+      const html = await page.content();
+      const selector = "#gsc_a_b > tr";
+      const content = await getArticleUrl(html, selector);
+      const article_detail = [];
+
+      //content.length
+      console.log("Number of Articles: ", content.length);
+      console.log("Scraping Articles: ");
+      for (let i = 0; i < content.length; i++) {
+        const browser = await puppeteer.launch({ headless: "new" });
+        const page = await browser.newPage();
+
+        console.log(i + 1);
+        const article_sub_data = content[i];
+        const detail_page_url = article_sub_data.url;
+        await page.goto(detail_page_url);
+        const detail_page_html = await page.content();
+        numArticle += 1;
+        const article_data = await getArticleDetail(
+          detail_page_html,
+          detail_page_url,
+          author_id
+        );
+        article_detail.push(article_data);
+
+        await browser.close();
+      }
+      authorAllDetail = await getAuthorDetail(html, author_id, url_checked);
+      authorAllDetail.articles = article_detail;
+    } else {
+      authorAllDetail = false;
+      url_not_ready = {
+        name: authorObject.name,
+        url: url_checked,
+      };
+    }
   } catch (error) {
-    console.error(`Error: ${error.message}`);
+    authorAllDetail = false;
+    url_not_ready = {
+      name: authorObject.name,
+      url: url_checked,
+    };
   }
 
-  const html = await page.content();
-  const selector = "#gsc_a_b > tr";
-  const content = await getArticleUrl(html, selector);
-  const article_detail = [];
-  let authorAllDetail
-
-  //content.length
-  console.log("Number of Articles: ", content.length);
-  console.log("Scraping Articles: ");
-  for (let i = 0; i < content.length; i++) {
-    console.log(i + 1);
-    const article_sub_data = content[i];
-    const detail_page_url = article_sub_data.url;
-    await page.goto(detail_page_url, { waitUntil: "networkidle2" });
-    await page.waitForTimeout(1360);
-    const detail_page_html = await page.content();
-    numArticle += 1;
-    const article_data = await getArticleDetail(
-      detail_page_html,
-      detail_page_url,
-      author_id
-    );
-    article_detail.push(article_data);
-  }
-  authorAllDetail = await getAuthorDetail(html, author_id, url_checked);
-  authorAllDetail.articles = article_detail;
   await browser.close();
-
-  return authorAllDetail;
+  return { all: authorAllDetail, url_not_ready: url_not_ready };
 };
 
 const getArticleUrl = async (html, selector) => {
@@ -150,12 +182,15 @@ const getGraph = async (url) => {
   let graph = [];
   const browser = await puppeteer.launch({ headless: "new" });
   const page = await browser.newPage();
-  await page.goto((`${url}#d=gsc_md_hist`));
+  await page.goto(`${url}#d=gsc_md_hist`);
   const html = await page.content();
   const $ = cheerio.load(html);
+  await browser.close();
 
   const years = $("#gsc_md_hist_c > div > div.gsc_md_hist_w > div > span")
-    .map((_, el) => $(el).text()).get().sort((a, b) => b - a);
+    .map((_, el) => $(el).text())
+    .get()
+    .sort((a, b) => b - a);
 
   const content_graph = $("#gsc_md_hist_c > div > div.gsc_md_hist_w > div > a");
   const citations = content_graph
@@ -172,19 +207,18 @@ const getGraph = async (url) => {
     })
     .get();
 
-    for (let i = citations.length - 1; i >= 0; i--) {
-      const yearIndex = Number(citations[i].index) - 1;
-      const obj = {
-        year: years[yearIndex],
-        citations: citations[i],
-      };
-      graph.push(obj);
-    }
-    
+  for (let i = citations.length - 1; i >= 0; i--) {
+    const yearIndex = Number(citations[i].index) - 1;
+    const obj = {
+      year: years[yearIndex],
+      citations: citations[i],
+    };
+    graph.push(obj);
+  }
 
-  await browser.close();
-
-  graph.sort((a, b) => parseInt(b.citations.index) - parseInt(a.citations.index)) ;
+  graph.sort(
+    (a, b) => parseInt(b.citations.index) - parseInt(a.citations.index)
+  );
   graph = graph.map((obj) => {
     const { index, ...citations } = obj.citations;
     return { year: obj.year, citations: citations.value };
@@ -199,6 +233,7 @@ const getSubTable = async (url) => {
   await page.goto(url, { waitUntil: "networkidle2" });
   const html = await page.content();
   const $ = cheerio.load(html);
+  await browser.close();
 
   const table = [
     {
@@ -232,10 +267,9 @@ const getSubTable = async (url) => {
       },
     },
   ];
-  await browser.close();
 
   return table;
-}
+};
 
 const getCitation = async (url) => {
   const citation_by = {};
@@ -243,7 +277,6 @@ const getCitation = async (url) => {
   citation_by.graph = await getGraph(url);
   return citation_by;
 };
-
 
 const getAuthorDetail = async (html, num, url) => {
   const $ = cheerio.load(html);
@@ -256,7 +289,7 @@ const getAuthorDetail = async (html, num, url) => {
       "#gsc_rsb_st > tbody > tr:nth-child(2) > td:nth-child(2)"
     ).text(),
     image: await check_src_image(html),
-    citation_by: await getCitation(url)
+    citation_by: await getCitation(url),
   };
 
   return author_detail;
@@ -282,7 +315,8 @@ const getArticleDetail = async (html, url, author_id) => {
   const field = [];
   let article_data = {};
   (article_data.article_id = numArticle),
-    (article_data.article_name = $("#gsc_oci_title > a").text());
+    // (article_data.article_name = $("#gsc_oci_title > a").text());
+    (article_data.article_name = $("#gsc_oci_title").text());
 
   content.each(async function (i) {
     let fieldText = $(this).find(".gsc_oci_field").text().trim().toLowerCase();
@@ -317,4 +351,5 @@ module.exports = {
   getAuthorAllDetail,
   getAuthorDetail,
   getArticleDetail,
+  scrapeMultiplePages,
 };

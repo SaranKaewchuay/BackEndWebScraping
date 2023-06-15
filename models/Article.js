@@ -4,6 +4,8 @@ const ArticleSchema = new mongoose.Schema({
     article_name: String,
     authors: Array,
     publication_date: String,
+    conference: String,
+    institution: String,
     journal: String,
     volume: String,
     issue: String,

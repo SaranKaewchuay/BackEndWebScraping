@@ -330,19 +330,11 @@ const scrapeAuthorData = async (url, page) => {
   const html = await page.content();
   const $ = cheerio.load(html);
   const author = {
-    name: $("div.Col-module__hwM1N.offset-lg-2 > div > h1 > strong").text(),
-    citation:  $(
-      "section > div > div:nth-child(1) > div > div > div:nth-child(1) > span"
-    ).text(),
-    citations_by: $(
-      "#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > section > div > div:nth-child(1) > div > div > div:nth-child(2) > span > p > span > em > strong"
-    ).text(),
-    documents: $(
-      "section > div > div:nth-child(2) > div > div > div:nth-child(1) > span"
-    ).text(),
-    h_index: $(
-      "section > div > div:nth-child(3) > div > div > div:nth-child(1) > span"
-    ).text(),
+    name: $("#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > div > h1 > strong").text(),
+    citation:  $("#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > section > div > div:nth-child(1) > div > div > div:nth-child(1) > span.Typography-module__lVnit.Typography-module__ix7bs.Typography-module__Nfgvc").text(),
+    citations_by: $("#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > section > div > div:nth-child(1) > div > div > div:nth-child(2) > span > p > span > em > strong").text(),
+    documents: $("#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > section > div > div:nth-child(2) > div > div > div:nth-child(1) > span.Typography-module__lVnit.Typography-module__ix7bs.Typography-module__Nfgvc").text(),
+    h_index: $("#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > section > div > div:nth-child(3) > div > div > div:nth-child(1) > span.Typography-module__lVnit.Typography-module__ix7bs.Typography-module__Nfgvc").text(),
     subject_area: await scrapSubjectArea(page),
     citations_graph: await scrapCitation(url, page),
     documents_graph: await scrapDocument(url, page),

@@ -1,89 +1,53 @@
 const express = require("express");
 const router = express.Router();
-const { getAuthorAllDetail, getURLScholar } = require("../scraper/function_google_scholar");
+const {
+  getAuthorAllDetail,
+  getURLScholar,
+} = require("../scraper/function_google_scholar");
 
-const {scraper} = require("../scraper/fuction_scopus");
-
-const Author = require('../models/Author.js');
-const Article = require('../models/Article.js');
-const { ObjectId } = require('mongodb');
-
-const insertDatatoDb = async (all) => {
-
-  all.map(async (author) => {
-    const objectId = new ObjectId();
-
-    const newAuthor = new Author({
-      _id: objectId,
-      author_name: author.author_name,
-      department: author.department,
-      subject_area: author.subject_area,
-      image: author.image,
-      citation_by: {
-        table: author.citation_by.table,
-        graph: author.citation_by.graph
-      }
-    });
-
-    author.articles.map(async (article) => {
-      const newArticle = new Article({
-        article_name: article.article_name,
-        authors: article.authors,
-        publication_date: article.publication_date,
-        conference: article.conference,
-        institution: article.institution,
-        journal: article.journal,
-        volume: article.volume,
-        issue: article.issue,
-        pages: article.pages,
-        publisher: article.publisher,
-        description: article.description,
-        total_citations: article.total_citations,
-        url: article.url,
-        author_id: objectId,
-      });
-      return await newArticle.save();
-    });
-    return await newAuthor.save();
-  });
-};
-
+const { scraper } = require("../scraper/fuction_scopus");
+process.setMaxListeners(100);
 
 router.get("/scholar", async (req, res) => {
   try {
-    const authorURL = await  getURLScholar();
-    let authorAllDetail = [];
-    let url_not_ready = []
-    let num_scraping
-    console.log("")
-    console.log("Start Scraping Researcher Data \n")
+    const authorURL = await getURLScholar();
+    let url_not_ready = [];
+    let num_scraping = 0;
+    console.log("\nStart Scraping Researcher Data\n");
 
-    //authorURL.length
-    for (let i = 255; i < 257; i++) {
-        console.log("Author ", i + 1, " / ",authorURL.length, ": " + authorURL[i].name)
-        console.log("authorURL[i].url = ",authorURL[i].url)
-        const number_author = i + 1;
-        const data = await getAuthorAllDetail(authorURL[i], number_author);
-        if(data.all === false){
-          url_not_ready.push(data.url_not_ready)
-          continue;
+    const batchSize = 20;
+
+    for (let i = 0; i < authorURL.length; i += batchSize) {
+      const batchAuthors = authorURL.slice(i, i + batchSize);
+      const scrapingPromises = batchAuthors.map((author, index) => {
+        const number_author = i + index + 1;
+        return getAuthorAllDetail(author, number_author, authorURL.length);
+      });
+
+      const batchResults = await Promise.allSettled(scrapingPromises);
+
+      batchResults.forEach((result) => {
+        if (result.status === "fulfilled") {
+          const data = result.value;
+          if (data.all === false) {
+            url_not_ready.push(data.url_not_ready);
+          } else {
+            num_scraping += 1;
+          }
+        } else if (result.status === "rejected") {
+          console.error(`Error: ${result.reason.message}`);
         }
-        authorAllDetail.push(data.all)
-        await insertDatatoDb(authorAllDetail)
-        console.log("")
-        console.log("Data insertion was completed successfully")
-        console.log("Researcher name: ", authorURL[i].name)
-        console.log("")
-        authorAllDetail = []
+      });
     }
-    console.log("")
-    console.log("Finish Scraping Researcher Data")
+
+    console.log("");
+    console.log("Finish Scraping Researcher Data");
 
     res.status(200).json({
-      meseage: "successful scraping",    
+      message: "Successful scraping",
       num_scraping: num_scraping,
       num_not_ready: url_not_ready.length,
-      url_not_ready: url_not_ready,  
+      url_not_ready: url_not_ready,
     });
   } catch (error) {
     console.error(error);
@@ -92,15 +56,13 @@ router.get("/scholar", async (req, res) => {
     });
   }
 });
-
 
 router.get("/scopus", async (req, res) => {
   try {
-    
-    const author_scopus = await scraper()
+    const author_scopus = await scraper();
 
     res.status(200).json({
-      meseage: author_scopus ,    
+      meseage: author_scopus,
     });
   } catch (error) {
     console.error(error);
@@ -109,6 +71,5 @@ router.get("/scopus", async (req, res) => {
     });
   }
 });
-
 
 module.exports = router;

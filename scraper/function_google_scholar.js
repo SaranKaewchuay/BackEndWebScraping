@@ -1,7 +1,8 @@
 const puppeteer = require("puppeteer");
 const cheerio = require("cheerio");
 const axios = require("axios");
-
+const { insertDataToDb } = require("../scraper/insertDatatoDb");
+process.setMaxListeners(100);
 let numArticle = null;
 
 const getUserScholarId = async (url) => {
@@ -20,32 +21,38 @@ async function checkElementExists(page, selector) {
 }
 
 const check_url = async (authorObject) => {
-  let url_checked;
-  const name = authorObject.name.split(".").pop().trim().split(" ");
-  const browser = await puppeteer.launch({ headless: true });
-  const page = await browser.newPage();
-  const url = `https://scholar.google.com/scholar?hl=th&as_sdt=0%2C5&q=${name[0]}+${name[1]}`;
-  await page.goto(url, { waitUntil: "networkidle2" });
-  const selector =
-    "#gs_res_ccl_mid > div:nth-child(1) > table > tbody > tr > td:nth-child(2) > h4 > a";
+  try {
+    let url_checked;
+    const name = authorObject.name.split(".").pop().trim().split(" ");
+    const browser = await puppeteer.launch({ headless: "new" });
+    const page = await browser.newPage();
+    const url = `https://scholar.google.com/scholar?hl=th&as_sdt=0%2C5&q=${name[0]}+${name[1]}`;
+    await page.goto(url, { waitUntil: "networkidle2" });
+    const selector =
+      "#gs_res_ccl_mid > div:nth-child(1) > table > tbody > tr > td:nth-child(2) > h4 > a";
 
-  if (await checkElementExists(page, selector)) {
-    const $ = cheerio.load(await page.content());
-    const link = `https://scholar.google.com${$(selector).attr("href")}`;
-    const id_url_current = await getUserScholarId(link);
-    const id_url_api = await getUserScholarId(authorObject.url);
-    url_checked =
-      id_url_api !== id_url_current
-        ? `https://scholar.google.com/citations?user=${id_url_current}&hl=en&oi=ao`
-        : authorObject.url;
-  } else {
-    url_checked = authorObject.url;
+    if (await checkElementExists(page, selector)) {
+      const $ = cheerio.load(await page.content());
+      const link = `https://scholar.google.com${$(selector).attr("href")}`;
+      const id_url_current = await getUserScholarId(link);
+      const id_url_api = await getUserScholarId(authorObject.url);
+
+      url_checked =
+        id_url_api !== id_url_current
+          ? `https://scholar.google.com/citations?user=${id_url_current}&hl=en&oi=ao`
+          : authorObject.url;
+    } else {
+      url_checked = authorObject.url;
+    }
+    await browser.close();
+
+    return url_checked;
+  } catch (error) {
+    // console.error("An error occurred during check_url:", error);
+    return authorObject.url; 
   }
-  console.log("url = ", url_checked);
-  await browser.close();
-
-  return url_checked;
 };
+
 
 const getURLScholar = async () => {
   let data = [];
@@ -60,7 +67,7 @@ const getURLScholar = async () => {
 
   const scholar = data
     .map((element) => ({
-      name: element.TITLEENG + element.FNAMEENG + " " + element.LNAMEENG,
+      name: element.TITLEENG + " " + element.FNAMEENG + " " + element.LNAMEENG,
       url: element.GGSCHOLAR,
     }))
     .filter((scholar) => scholar.url)
@@ -75,69 +82,48 @@ const getURLScholar = async () => {
   return scholar;
 };
 
-async function scrapeMultiplePages(urls) {
-  const promises = urls.map((url) => scrapePage(url));
-  return Promise.all(promises);
-}
-
-const getAuthorAllDetail = async (authorObject, author_id) => {
+const getAuthorAllDetail = async (authorObject, number_author, length) => {
   const browser = await puppeteer.launch({ headless: "new" });
   const page = await browser.newPage();
   let url_checked = await check_url(authorObject);
-  // await page.goto(url_checked , { waitUntil: "networkidle2" });
   let authorAllDetail;
   let url_not_ready;
+
   try {
     const response = await page.goto(url_checked, {
       waitUntil: "networkidle2",
     });
-    if (response.ok()) {
-      try {
-        while (
-          await page.$eval("#gsc_bpf_more", (button) => !button.disabled)
-        ) {
-          await page.click("#gsc_bpf_more");
-          await page.waitForTimeout(1500);
-          await page.waitForSelector("#gsc_a_b");
-        }
-      } catch (error) {
-        console.error(`Error: ${error.message}`);
-      }
 
+    if (response.ok()) {
+      await scrapeAdditionalData(page);
       const html = await page.content();
       const selector = "#gsc_a_b > tr";
       const content = await getArticleUrl(html, selector);
-      const article_detail = [];
 
-      //content.length
+      console.log("Author ",number_author," / ",length,": " + authorObject.name);
       console.log("Number of Articles: ", content.length);
-      console.log("Scraping Articles: ");
-      for (let i = 0; i < content.length; i++) {
-        const browser = await puppeteer.launch({ headless: "new" });
-        const page = await browser.newPage();
 
-        console.log(i + 1);
-        const article_sub_data = content[i];
-        const detail_page_url = article_sub_data.url;
-        await page.goto(detail_page_url);
-        const detail_page_html = await page.content();
-        numArticle += 1;
-        const article_data = await getArticleDetail(
-          detail_page_html,
-          detail_page_url,
-          author_id
-        );
-        article_detail.push(article_data);
+      const article_detail_promises = content.map(
+        async (article_sub_data, i) => {
+          const detail_page_url = article_sub_data.url;
+          return fetchArticleDetail(browser, detail_page_url);
+        }
+      );
 
-        await browser.close();
-      }
-      authorAllDetail = await getAuthorDetail(html, author_id, url_checked);
-      authorAllDetail.articles = article_detail;
+      authorAllDetail = await getAuthorDetail(html, url_checked);
+      authorAllDetail.articles = await Promise.all(article_detail_promises);
+
+      insertDataToDb(authorAllDetail);
+
+      console.log("");
+      console.log("Data insertion of ",authorObject.name," was completed successfully");
+      console.log("");
     } else {
       authorAllDetail = false;
       url_not_ready = {
         name: authorObject.name,
         url: url_checked,
+        index: number_author - 1,
       };
     }
   } catch (error) {
@@ -145,130 +131,180 @@ const getAuthorAllDetail = async (authorObject, author_id) => {
     url_not_ready = {
       name: authorObject.name,
       url: url_checked,
+      index: number_author - 1,
     };
+  } finally {
+    await browser.close();
   }
 
-  await browser.close();
   return { all: authorAllDetail, url_not_ready: url_not_ready };
 };
+
+const scrapeAdditionalData = async (page) => {
+  try {
+    while (await page.$eval("#gsc_bpf_more", (button) => !button.disabled)) {
+      await page.click("#gsc_bpf_more");
+      await page.waitForTimeout(1450);
+      await page.waitForSelector("#gsc_a_b");
+    }
+  } catch (error) {
+    // console.error(`Error: ${error.message}`);
+  }
+};
+
+const fetchArticleDetail = async (browser, detail_page_url) => {
+  try {
+    const page = await browser.newPage();
+    await page.goto(detail_page_url, { waitUntil: "networkidle2" });
+    const detail_page_html = await page.content();
+    const article_data = await getArticleDetail(
+      detail_page_html,
+      detail_page_url
+    );
+    await page.close();
+    return article_data;
+  } catch (error) {
+    // console.error("An error occurred during fetchArticleDetail:", error);
+    return null; 
+  }
+};
+
 
 const getArticleUrl = async (html, selector) => {
   const $ = cheerio.load(html);
   const content = $(selector);
-  const news_data = [];
-  content.each(function () {
-    const obj = {
+  const news_data = content.map(function () {
+    return {
       title: $(this).find("td.gsc_a_t > a").text(),
       url: "https://scholar.google.com" + $(this).find("a").attr("href"),
     };
-    news_data.push(obj);
-  });
+  }).get();
   return news_data;
 };
 
+
 const check_src_image = async (html) => {
   const $ = cheerio.load(html);
-  let src;
-  let image = $("#gsc_prf_pup-img").attr("src");
-  if (image.indexOf("https://scholar.googleusercontent.com") == -1) {
-    src = "https://scholar.googleusercontent.com" + image;
-  } else {
-    src = image;
-  }
+  const image = $("#gsc_prf_pup-img").attr("src");
+  const src = image.includes("https://scholar.googleusercontent.com")
+    ? image
+    : "https://scholar.googleusercontent.com" + image;
   return src;
 };
 
 const getGraph = async (url) => {
-  let graph = [];
-  const browser = await puppeteer.launch({ headless: "new" });
-  const page = await browser.newPage();
-  await page.goto(`${url}#d=gsc_md_hist`);
-  const html = await page.content();
-  const $ = cheerio.load(html);
-  await browser.close();
+  try {
+    let graph = [];
+    const browser = await puppeteer.launch({ headless: "new" });
+    const page = await browser.newPage();
+    try {
+      await page.goto(`${url}#d=gsc_md_hist`);
+      const html = await page.content();
+      const $ = cheerio.load(html);
+      await browser.close();
 
-  const years = $("#gsc_md_hist_c > div > div.gsc_md_hist_w > div > span")
-    .map((_, el) => $(el).text())
-    .get()
-    .sort((a, b) => b - a);
+      const years = $("#gsc_md_hist_c > div > div.gsc_md_hist_w > div > span")
+        .map((_, el) => $(el).text())
+        .get()
+        .sort((a, b) => b - a);
 
-  const content_graph = $("#gsc_md_hist_c > div > div.gsc_md_hist_w > div > a");
-  const citations = content_graph
-    .map(function (i, el) {
-      const { style } = el.attribs;
-      const regex = /z-index:(\d+)/;
-      const match = style.match(regex);
-      const index = match[1];
+      const content_graph = $("#gsc_md_hist_c > div > div.gsc_md_hist_w > div > a");
+      const citations = content_graph
+        .map(function (i, el) {
+          const { style } = el.attribs;
+          const regex = /z-index:(\d+)/;
+          const match = style.match(regex);
+          const index = match[1];
 
-      return {
-        value: $(el).text(),
-        index: index,
-      };
-    })
-    .get();
+          return {
+            value: $(el).text(),
+            index: index,
+          };
+        })
+        .get();
 
-  for (let i = citations.length - 1; i >= 0; i--) {
-    const yearIndex = Number(citations[i].index) - 1;
-    const obj = {
-      year: years[yearIndex],
-      citations: citations[i],
-    };
-    graph.push(obj);
+      for (let i = citations.length - 1; i >= 0; i--) {
+        const yearIndex = Number(citations[i].index) - 1;
+        const obj = {
+          year: years[yearIndex],
+          citations: citations[i],
+        };
+        graph.push(obj);
+      }
+
+      graph.sort(
+        (a, b) => parseInt(b.citations.index) - parseInt(a.citations.index)
+      );
+      graph = graph.map((obj) => {
+        const { index, ...citations } = obj.citations;
+        return { year: obj.year, citations: citations.value };
+      });
+
+      return graph;
+    } catch (error) {
+      // console.error("An error occurred during page.goto:", error);
+      await browser.close();
+      return null; 
+    }
+  } catch (error) {
+    // console.error("An error occurred during getGraph:", error);
+    return null; 
   }
-
-  graph.sort(
-    (a, b) => parseInt(b.citations.index) - parseInt(a.citations.index)
-  );
-  graph = graph.map((obj) => {
-    const { index, ...citations } = obj.citations;
-    return { year: obj.year, citations: citations.value };
-  });
-
-  return graph;
 };
 
 const getSubTable = async (url) => {
-  const browser = await puppeteer.launch({ headless: "new" });
-  const page = await browser.newPage();
-  await page.goto(url, { waitUntil: "networkidle2" });
-  const html = await page.content();
-  const $ = cheerio.load(html);
-  await browser.close();
+  try {
+    const browser = await puppeteer.launch({ headless: "new" });
+    const page = await browser.newPage();
+    try {
+      await page.goto(url, { waitUntil: "networkidle2" });
+      const html = await page.content();
+      const $ = cheerio.load(html);
+      await browser.close();
 
-  const table = [
-    {
-      citations: {
-        all: $(
-          "#gsc_rsb_st > tbody > tr:nth-child(1) > td:nth-child(2)"
-        ).text(),
-        since_2018: $(
-          "#gsc_rsb_st > tbody > tr:nth-child(1) > td:nth-child(3)"
-        ).text(),
-      },
-    },
-    {
-      h_index: {
-        all: $(
-          "#gsc_rsb_st > tbody > tr:nth-child(2) > td:nth-child(2)"
-        ).text(),
-        since_2018: $(
-          "#gsc_rsb_st > tbody > tr:nth-child(2) > td:nth-child(3)"
-        ).text(),
-      },
-    },
-    {
-      i10_index: {
-        all: $(
-          "#gsc_rsb_st > tbody > tr:nth-child(3) > td:nth-child(2)"
-        ).text(),
-        since_2018: $(
-          "#gsc_rsb_st > tbody > tr:nth-child(3) > td:nth-child(3)"
-        ).text(),
-      },
-    },
-  ];
+      const table = [
+        {
+          citations: {
+            all: $(
+              "#gsc_rsb_st > tbody > tr:nth-child(1) > td:nth-child(2)"
+            ).text(),
+            since_2018: $(
+              "#gsc_rsb_st > tbody > tr:nth-child(1) > td:nth-child(3)"
+            ).text(),
+          },
+        },
+        {
+          h_index: {
+            all: $(
+              "#gsc_rsb_st > tbody > tr:nth-child(2) > td:nth-child(2)"
+            ).text(),
+            since_2018: $(
+              "#gsc_rsb_st > tbody > tr:nth-child(2) > td:nth-child(3)"
+            ).text(),
+          },
+        },
+        {
+          i10_index: {
+            all: $(
+              "#gsc_rsb_st > tbody > tr:nth-child(3) > td:nth-child(2)"
+            ).text(),
+            since_2018: $(
+              "#gsc_rsb_st > tbody > tr:nth-child(3) > td:nth-child(3)"
+            ).text(),
+          },
+        },
+      ];
 
-  return table;
+      return table;
+    } catch (error) {
+      // console.error("An error occurred during page.goto:", error);
+      await browser.close();
+      return null; 
+    }
+  } catch (error) {
+    // console.error("An error occurred during getSubTable:", error);
+    return null;
+  }
 };
 
 const getCitation = async (url) => {
@@ -278,10 +314,9 @@ const getCitation = async (url) => {
   return citation_by;
 };
 
-const getAuthorDetail = async (html, num, url) => {
+const getAuthorDetail = async (html, url) => {
   const $ = cheerio.load(html);
   const author_detail = {
-    author_id: num,
     author_name: $("#gsc_prf_in").text(),
     department: $("#gsc_prf_i > div:nth-child(2)").text(),
     subject_area: await getSubjectArea(html),
@@ -297,28 +332,21 @@ const getAuthorDetail = async (html, num, url) => {
 
 const getSubjectArea = async (html) => {
   const $ = cheerio.load(html);
-  const subjectArea = [];
   const subject = $("#gsc_prf_int > a");
-
-  for (let i = 0; i < subject.length; i++) {
-    const obj = $("#gsc_prf_int > a:nth-child(" + (i + 1) + ")").text();
-    subjectArea.push(obj);
-  }
-
+  const subjectArea = subject.map((i, el) => $(el).text()).get();
   return subjectArea;
 };
 
-const getArticleDetail = async (html, url, author_id) => {
+const getArticleDetail = async (html, url) => {
   const $ = cheerio.load(html);
   const content = $("#gsc_oci_table > div.gs_scl");
 
   const field = [];
   let article_data = {};
-  (article_data.article_id = numArticle),
-    // (article_data.article_name = $("#gsc_oci_title > a").text());
-    (article_data.article_name = $("#gsc_oci_title").text());
+  article_data.article_id = numArticle;
+  article_data.article_name = $("#gsc_oci_title").text();
 
-  content.each(async function (i) {
+  content.map(async function (i) {
     let fieldText = $(this).find(".gsc_oci_field").text().trim().toLowerCase();
     fieldText = fieldText.replace(" ", "_");
     const fieldValue = $(this).find(".gsc_oci_value > div > a").text().trim();
@@ -333,16 +361,14 @@ const getArticleDetail = async (html, url, author_id) => {
       }
     }
   });
-  (article_data.url = url), (article_data.author_id = author_id);
+  article_data.url = url;
 
   return article_data;
 };
 
+
 const getAuthor = async (author) => {
-  const author_data = author.split(",");
-  for (let i = 0; i < author_data.length; i++) {
-    author_data[i] = author_data[i].trim();
-  }
+  const author_data = author.split(",").map((item) => item.trim());
   return author_data;
 };
 
@@ -351,5 +377,4 @@ module.exports = {
   getAuthorAllDetail,
   getAuthorDetail,
   getArticleDetail,
-  scrapeMultiplePages,
 };

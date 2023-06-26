@@ -2,12 +2,16 @@ const axios = require("axios");
 const puppeteer = require("puppeteer");
 const cheerio = require("cheerio");
 const { createJson, createJournal } = require("./createJson");
+const {
+  insertDataToDbScopus,
+  insertDataToJournal,
+} = require("../scraper/insertToDb");
 
 const scraper = async () => {
   const allURLs = await getURLScopus();
   const allAuthors = [];
   //allAuthors
-  for (let i = 0; i < allAuthors; i++) {
+  for (let i = 2; i < 10; i++) {
     console.log(
       `Scraping Author ${i + 1} of ${allURLs.length}: ${allURLs[i].name}`
     );
@@ -19,7 +23,7 @@ const scraper = async () => {
     author.articles = article;
     allAuthors.push(author);
 
-    await createJson(author);
+    await insertDataToDbScopus(author);
 
     await browser.close();
   }
@@ -110,8 +114,10 @@ const getArticleDetail = async (page, url) => {
   const html = await page.content();
 
   const journal = await scrapViewFullSource(page);
+  let check_journal = false;
   if (journal) {
-    await createJournal(journal);
+    check_journal = true;
+    await insertDataToJournal(journal);
   }
 
   const $ = cheerio.load(html);
@@ -120,6 +126,7 @@ const getArticleDetail = async (page, url) => {
     name: $(
       "#doc-details-page-container > article > div:nth-child(2) > section > div.row.margin-size-8-t > div > h2 > span"
     ).text(),
+    ...(check_journal && { source_id: journal.source_id }),
     co_author: await scrapCo_Author(html),
   };
 
@@ -231,24 +238,36 @@ const scrapViewFullSource = async (page) => {
       const field = [];
       let journal = {};
 
-      journal.source_id = source_id;  
-      journal.journal_name = $("#jourlSection > div.col-md-9.col-xs-9.noPadding > div > h2").text(),
-      content.map(async function (i) {
-        let fieldText = $(this)
-          .find("span.left")
-          .text()
-          .trim()
-          .toLowerCase()
-          .replace(":", "");
-        fieldText = fieldText.replace(" ", "_");
-        const fieldValue = $(this).find("span.right").text().trim();
-        field.push(fieldText);
-        if (fieldText === "subject_area") {
-          journal[fieldText] = await scrapSubjectAreaJournal(html);
-        } else {
-          journal[fieldText] = fieldValue;
-        }
-      });
+      journal.source_id = source_id;
+      (journal.journal_name = $(
+        "#jourlSection > div.col-md-9.col-xs-9.noPadding > div > h2"
+      ).text()),
+        content.map(async function (i) {
+          let fieldText = $(this)
+            .find("span.left")
+            .text()
+            .trim()
+            .toLowerCase()
+            .replace(":", "")
+            .replace(/ /g, "_")
+            .replace("-", "");
+          const fieldValue = $(this).find("span.right").text().trim();
+          field.push(fieldText);
+          if (fieldText === "issneissn:") {
+            journal["issn"] = $(this)
+              .find("#issn > span:nth-child(2)")
+              .text()
+              .trim();
+            journal["eissn"] = $(this)
+              .find("span.marginLeft1.right")
+              .text()
+              .trim();
+          } else if (fieldText === "subject_area") {
+            journal[fieldText] = await scrapSubjectAreaJournal(html);
+          } else {
+            journal[fieldText] = fieldValue;
+          }
+        });
 
       journal.cite_source = await processDropdowns(page);
 
@@ -330,11 +349,21 @@ const scrapeAuthorData = async (url, page) => {
   const html = await page.content();
   const $ = cheerio.load(html);
   const author = {
-    name: $("#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > div > h1 > strong").text(),
-    citation:  $("#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > section > div > div:nth-child(1) > div > div > div:nth-child(1) > span.Typography-module__lVnit.Typography-module__ix7bs.Typography-module__Nfgvc").text(),
-    citations_by: $("#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > section > div > div:nth-child(1) > div > div > div:nth-child(2) > span > p > span > em > strong").text(),
-    documents: $("#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > section > div > div:nth-child(2) > div > div > div:nth-child(1) > span.Typography-module__lVnit.Typography-module__ix7bs.Typography-module__Nfgvc").text(),
-    h_index: $("#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > section > div > div:nth-child(3) > div > div > div:nth-child(1) > span.Typography-module__lVnit.Typography-module__ix7bs.Typography-module__Nfgvc").text(),
+    name: $(
+      "#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > div > h1 > strong"
+    ).text(),
+    citation: $(
+      "#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > section > div > div:nth-child(1) > div > div > div:nth-child(1) > span.Typography-module__lVnit.Typography-module__ix7bs.Typography-module__Nfgvc"
+    ).text(),
+    citations_by: $(
+      "#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > section > div > div:nth-child(1) > div > div > div:nth-child(2) > span > p > span > em > strong"
+    ).text(),
+    documents: $(
+      "#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > section > div > div:nth-child(2) > div > div > div:nth-child(1) > span.Typography-module__lVnit.Typography-module__ix7bs.Typography-module__Nfgvc"
+    ).text(),
+    h_index: $(
+      "#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > section > div > div:nth-child(3) > div > div > div:nth-child(1) > span.Typography-module__lVnit.Typography-module__ix7bs.Typography-module__Nfgvc"
+    ).text(),
     subject_area: await scrapSubjectArea(page),
     citations_graph: await scrapCitation(url, page),
     documents_graph: await scrapDocument(url, page),
@@ -352,45 +381,45 @@ const scrapCitation = async (url, page) => {
   const html = await page.content();
   const $ = cheerio.load(html);
   const content = $("#analyzeCitations-table > tbody > tr");
-  const citation = [];
+  const citations = [];
   content.each(function () {
     const year = $(this).find("td:nth-child(1)").text();
-    const documents = $(this).find("td.alignRight > a > span").text();
-    if (documents) {
-      const citations = {
+    const cite = $(this).find("td.alignRight > a > span").text();
+    if (cite) {
+      const citation = {
         year: year,
-        documents: documents,
+        citations: cite,
       };
-      citation.push(citations);
+      citations.push(citation);
     }
   });
 
-  return citation;
+  return citations;
 };
 
 const scrapDocument = async (url, page) => {
-  const scopusID = await getScopusID(url)
-  const url_citaion = `https://www.scopus.com/hirsch/author.uri?accessor=authorProfile&auidList=${scopusID}&origin=AuthorProfile`
+  const scopusID = await getScopusID(url);
+  const url_citaion = `https://www.scopus.com/hirsch/author.uri?accessor=authorProfile&auidList=${scopusID}&origin=AuthorProfile`;
   await page.goto(url_citaion, { waitUntil: "networkidle2" });
   await page.click("#analyzeYear-miniChart > header > h2 > button");
   const html = await page.content();
   const $ = cheerio.load(html);
-  const content = $("#analyzeYear-table > tbody > tr")
-  const document = [];
+  const content = $("#analyzeYear-table > tbody > tr");
+  const documents = [];
   content.each(function () {
     const year = $(this).find("td:nth-child(1)").text();
-    const documents = $(this).find("td.alignRight > a > span").text();
-    if (documents) {
+    const document = $(this).find("td.alignRight > a > span").text();
+    if (document) {
       const citations = {
         year: year,
-        documents: documents
+        documents: document,
       };
-      document.push(citations);
+      documents.push(citations);
     }
   });
 
-  return document
-}
+  return documents;
+};
 
 const getScopusID = async (url) => {
   const match = url.match(/authorId=\d+/)[0];

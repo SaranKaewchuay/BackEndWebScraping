@@ -1,0 +1,242 @@
+{
+    "message": "Successful scraping",
+    "num_scraping": 549,
+    "num_not_ready": 47,
+    "url_not_ready": [
+      {
+        "name": "Assoc.Prof.Dr. Mullica Jaroensutasinee",
+        "url": "https://scholar.google.co.nz/citations?user=fERyT1wAAAAJ&hl=en",
+        "index": 20
+      },
+      {
+        "name": "Asst.Prof.Dr. Visaka Anantawat",
+        "url": "https://scholar.google.com/citations?user=Z6SY-zEAAAAJ&hl=en",
+        "index": 43
+      },
+      {
+        "name": "Asst.Prof.Dr. Pakorn Ditthakit",
+        "url": "https://scholar.google.com/citations?user=ofSV2V8AAAAJ&hl=en",
+        "index": 46
+      },
+      {
+        "name": "Mr. Suthira Thongkao",
+        "url": "https://scholar.google.com/citations?user=0Al2LK0AAAAJ&hl=en",
+        "index": 64
+      },
+      {
+        "name": "Assoc.Prof.Dr. Wipawee Dechapanya",
+        "url": "https://scholar.google.com/citations?hl=en&user=dl6vN1UAAAAJ",
+        "index": 75
+      },
+      {
+        "name": "Asst.Prof.Dr. Worrapong Phupong",
+        "url": "https://scholar.google.com/citations?hl=en&user=aBVFV4UAAAAJ",
+        "index": 85
+      },
+      {
+        "name": "Dr. Siranee Yongpraderm",
+        "url": "https://scholar.google.com/citations?hl=en&user=cng-zbAAAAAJ",
+        "index": 113
+      },
+      {
+        "name": "Assoc.Prof. Rewat Suksikarn",
+        "url": "https://scholar.google.com/citations?user=edqALJEAAAAJ&hl=en",
+        "index": 138
+      },
+      {
+        "name": "Dr. Pattida Thongkaow",
+        "url": "https://scholar.google.com/citations?hl=en&user=nm5HbDcAAAAJ",
+        "index": 156
+      },
+      {
+        "name": "Dr. Warangkana Srimoke",
+        "url": "https://scholar.google.com/citations?hl=en&user=_HAncBMAAAAJ",
+        "index": 163
+      },
+      {
+        "name": "Dr. Bhudsaban Sukkarn",
+        "url": "https://scholar.google.com/citations?hl=en&user=xx3KpisAAAAJ",
+        "index": 170
+      },
+      {
+        "name": "Asst.Prof. Thanawan Songprasert",
+        "url": "https://scholar.google.com/citations?user=SiKM6tkAAAAJ&hl=en",
+        "index": 181
+      },
+      {
+        "name": "Miss Netchanog Jianramas",
+        "url": "https://scholar.google.co.th/citations?hl=en&user=XsqX_X0AAAAJ",
+        "index": 205
+      },
+      {
+        "name": "Miss Kamkaeo Maneerot",
+        "url": "https://scholar.google.com/citations?hl=en&user=SbEJqFsAAAAJ",
+        "index": 262
+      },
+      {
+        "name": "Asst.Prof.Dr. Udomratana Vattanasit",
+        "url": "https://scholar.google.com/citations?hl=en&user=0paMm8EAAAAJ",
+        "index": 273
+      },
+      {
+        "name": "Asst.Prof.Dr. Chantira Wongnen",
+        "url": "https://scholar.google.com/citations?hl=en&user=OTINN_kAAAAJ",
+        "index": 311
+      },
+      {
+        "name": "Dr. Phetcharat Boonruamkaew",
+        "url": "https://scholar.google.com/citations?user=pu3QahQAAAAJ&hl=en",
+        "index": 317
+      },
+      {
+        "name": "Assoc.Prof.Dr. Voravuth Somsak",
+        "url": "https://scholar.google.com/citations?user=DIKMbJ4AAAAJ&hl=en",
+        "index": 328
+      },
+      {
+        "name": "Asst.Prof.Dr. Sawanya Laohaprapanon",
+        "url": "https://scholar.google.com/citations?hl=en&user=lU_p1tsAAAAJ",
+        "index": 330
+      },
+      {
+        "name": "Miss Nitima Nulong",
+        "url": "https://scholar.google.com/citations?user=3Ba20kgAAAAJ&hl=en",
+        "index": 362
+      },
+      {
+        "name": "Miss Nutcha Narom",
+        "url": "https://scholar.google.com/citations?hl=en&user=j10jMbMAAAAJ",
+        "index": 372
+      },
+      {
+        "name": "Assoc.Prof.Dr. Jeerakiat Apibunyopas",
+        "url": "https://scholar.google.com/citations?hl=en&user=2KHUTqkAAAAJ",
+        "index": 379
+      },
+      {
+        "name": "Miss Pornchanuch Chumpunuch",
+        "url": "https://scholar.google.com/citations?user=o9UMMRsAAAAJ&hl=en",
+        "index": 387
+      },
+      {
+        "name": "Asst.Prof.Dr. Trairong Swatdikun",
+        "url": "https://scholar.google.com/citations?user=ldzvf-4AAAAJ&hl=en",
+        "index": 388
+      },
+      {
+        "name": "Assoc.Prof.Dr. Thanongsak Imjai",
+        "url": "https://scholar.google.com/citations?user=cQMM6xwAAAAJ&hl=en",
+        "index": 390
+      },
+      {
+        "name": "Asst.Prof.Dr. Tunwadee Klongklaew",
+        "url": "https://scholar.google.com/citations?user=WDNrMFoAAAAJ&hl=en",
+        "index": 394
+      },
+      {
+        "name": "Asst.Prof.Dr. Laksanara Khwanchum",
+        "url": "https://scholar.google.com/citations?user=4t6LttgAAAAJ&hl=en",
+        "index": 408
+      },
+      {
+        "name": "Miss Tiwaporn Thongsutt",
+        "url": "https://scholar.google.com/citations?hl=en&user=YU1OF3UAAAAJ",
+        "index": 411
+      },
+      {
+        "name": "Miss Nitcha Watthanasiripakdee",
+        "url": "https://scholar.google.com/citations?hl=en&user=ECI67TUAAAAJ",
+        "index": 460
+      },
+      {
+        "name": "Miss Chonchanok Bunsuk",
+        "url": "https://scholar.google.com/citations?hl=en&user=Jgqq7pMAAAAJ",
+        "index": 461
+      },
+      {
+        "name": "Miss Chanakan Sitthisak",
+        "url": "https://scholar.google.com/citations?user=2LTjPU0AAAAJ&hl=en",
+        "index": 467
+      },
+      {
+        "name": "Asst.Prof.Dr. Khemmanit Wattanatinnachot",
+        "url": "https://scholar.google.com/citations?user=NxI9SPgAAAAJ&hl=en",
+        "index": 469
+      },
+      {
+        "name": "Miss Siriporn Tansuwan",
+        "url": "https://scholar.google.com/citations?hl=en&user=NrcFuI0AAAAJ",
+        "index": 473
+      },
+      {
+        "name": "Mr. Tanakorn Anurak",
+        "url": "https://scholar.google.com/citations?user=vsAzavEAAAAJ&hl=en",
+        "index": 491
+      },
+      {
+        "name": "Mr. Kittithat Sudchoo",
+        "url": "https://scholar.google.com/citations?hl=en&user=qtiZ34cAAAAJ",
+        "index": 505
+      },
+      {
+        "name": "Asst.Prof.Dr. Torranis Ruttanaphan",
+        "url": "https://scholar.google.com/citations?hl=en&user=FbodJZcAAAAJ",
+        "index": 516
+      },
+      {
+        "name": "Asst..Prof.Dr. Fonthip Makkliang",
+        "url": "https://scholar.google.com/citations?user=EOn6I3EAAAAJ&hl=en",
+        "index": 528
+      },
+      {
+        "name": "Miss Sumoltip Sontimuang",
+        "url": "https://scholar.google.com/citations?hl=en&user=o2qiHQUAAAAJ",
+        "index": 537
+      },
+      {
+        "name": "Dr. Nuntika Wangpradit",
+        "url": "https://scholar.google.com/citations?user=IiwGuycAAAAJ&hl=en",
+        "index": 539
+      },
+      {
+        "name": "Miss Praphatson Saemmongkhon",
+        "url": "https://scholar.google.com/citations?user=vikD6NEAAAAJ&hl=en",
+        "index": 547
+      },
+      {
+        "name": "Miss Kanokkarn Mueangkaew",
+        "url": "https://scholar.google.co.th/citations?user=aore5ikAAAAJ&hl=en",
+        "index": 562
+      },
+      {
+        "name": "Miss Chotip Singhamat",
+        "url": "https://scholar.google.com/citations?hl=en&user=Ioy2D8wAAAAJ&view_op=list_works&authuser=2",
+        "index": 564
+      },
+      {
+        "name": "Miss Supaporn Kongton",
+        "url": "https://scholar.google.co.th/citations?user=iGjk5y8AAAAJ&hl=en",
+        "index": 570
+      },
+      {
+        "name": "Mr. Attaporn Buachuen",
+        "url": "https://scholar.google.co.th/citations?hl=en&user=hRnp_NEAAAAJ",
+        "index": 571
+      },
+      {
+        "name": "Mr. Tatchakrit Matyakhan",
+        "url": "https://scholar.google.com/citations?user=tgQiZlAAAAAJ&hl=en",
+        "index": 579
+      },
+      {
+        "name": "Miss Nuchanart Rodsaaad",
+        "url": "https://scholar.google.co.th/citations?hl=en&user=36agYNkAAAAJ",
+        "index": 582
+      },
+      {
+        "name": "Assoc.Prof.Dr. Bundit Unyong",
+        "url": "https://scholar.google.co.th/citations?user=DISvaNkAAAAJ&hl=en",
+        "index": 584
+      }
+    ]
+  }

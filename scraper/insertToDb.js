@@ -54,13 +54,14 @@ const insertDataToDbScholar = async (data) => {
       }
 };
 
-const insertDataToDbScopus = async (data) => {
+const insertDataToDbScopus = async (data,author_name) => {
     try {
         const objectId = new ObjectId();
 
         const newAuthor = new AuthorScopus({
             _id: objectId,
             author_name: data.name,
+            citations: data.citation,
             citations_by: data.citations_by,
             documents: data.documents,
             h_index: data.h_index,
@@ -70,27 +71,32 @@ const insertDataToDbScopus = async (data) => {
             url: data.url,
         });
 
-        const articles = data.articles.map((articleData) => ({
+        const articles = data.articles.map((articleData) => {
+          const article = {
             article_name: articleData.name,
+            ...(articleData.hasOwnProperty('source_id') && { source_id: articleData.source_id }),
             co_author: articleData.co_author,
             document_type: articleData.document_type,
             source_type: articleData.source_type,
             issn: articleData.issn,
             original_language: articleData.original_language,
             publisher: articleData.publisher,
-            E_ISSN: articleData.E_ISSN,
-            subject_area: articleData.subject_area, 
             author_keywords: articleData.author_keywords, 
             abstract: articleData.abstract,
             url: articleData.url,
             author_id: objectId,
-        }));
+          };
+        
+          return article;
+        });
+        
 
         await ArticleScopus.insertMany(articles);
         await newAuthor.save();
-        console.log('Data saved successfully to MongoDB.');
+        console.log('Authors and Articles Data of '+author_name+' saved successfully to MongoDB.');
+        console.log("");
     } catch (error) {
-        console.error('Error saving data to MongoDB:', error);
+        console.error('Error saving Authors and Articles data to MongoDB:', error);
     }
 };
 
@@ -111,7 +117,7 @@ const insertDataToJournal = async (data) => {
         });
 
         await newJournal.save();
-        console.log('Data saved successfully to MongoDB.');
+        // console.log('Journal Data saved successfully to MongoDB.');
     } catch (error) {
         console.error('Error saving data to MongoDB:', error);
     }

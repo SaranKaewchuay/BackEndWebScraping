@@ -1,46 +1,42 @@
 const axios = require("axios");
 const puppeteer = require("puppeteer");
 const cheerio = require("cheerio");
-const {
-  insertDataToDbScopus,
-} = require("./insertToDb");
-let roundScraping = 0; 
+const { insertDataToDbScopus } = require("../scraper/insertToDb");
+
+const batchSize = 5; 
+
+let roundScraping = 16; 
 let allAuthors = [];
-let author_backup = {};
 
 const scraper = async () => {
   try {
     const allURLs = await getURLScopus();
 
-    for (let i = roundScraping; i < allURLs.length; i++) {
-      roundScraping = i;
-      console.log(
-        `Scraping Author ${i + 1} of ${allURLs.length}: ${allURLs[i].name}`
-      );
-      console.log(`URL: ${allURLs[i].url}`);
+    while (i = roundScraping  < allURLs.length) {
+      const batchURLs = allURLs.slice(roundScraping, roundScraping + batchSize);
+      const promises = batchURLs.map(async (url, index) => {
+        const authorIndex = roundScraping + index;
+        const browser = await puppeteer.launch({ headless: "new" });
+        const page = await browser.newPage();
 
-      const browser = await puppeteer.launch({ headless: "new" });
-      const page = await browser.newPage();
+        try {
+          const author = await scrapeAuthorData(url.url, page);
+          const article = await scrapeArticleData(url, page , authorIndex + 1, allURLs.length);
+          author.articles = article;
+          allAuthors.push(author);
+          await insertDataToDbScopus(author,url.name);
+          roundScraping += batchSize;
 
-      try {
-        if (Object.keys(author_backup).length === 0) {
-          const author = await scrapeAuthorData(allURLs[i].url, page);
-          author_backup = author;
+        } catch (error) {
+          console.error("Error occurred while scraping:", error);
+          await scraper();
+        } finally {
+          await browser.close();
         }
-        const article = await scrapeArticleData(allURLs[i].url, page);
+      });
 
-        if (Object.keys(author_backup).length !== 0 && article.length !== 0) {
-          author_backup.articles = article;
-          allAuthors.push(author_backup);
-          await insertDataToDbScopus(author_backup);
-          author_backup = {};
-        }
-      } catch (error) {
-        console.error("Error occurred while scraping:", error);
-        await scraper();
-      } finally {
-        await browser.close();
-      }
+      await Promise.allSettled(promises);
+    
     }
 
     console.log("Finish Scraping Scopus");
@@ -48,63 +44,64 @@ const scraper = async () => {
   } catch (error) {
     console.error("An error occurred:", error);
     await scraper();
-    return [];
+    return []; 
   }
 };
 
-let roundArticle = 0;
-let article_detail = [];
+const scrapeArticleData = async (url, page , index_aouthor, lenght_author) => {
+  await page.goto(url.url, { waitUntil: "networkidle2" });
+  await page.waitForSelector("#preprints");
+  await page.click("#preprints");
+  await page.waitForTimeout(1500);
+  await page.waitForSelector("#documents");
+  await page.click("#documents");
+  await page.waitForTimeout(1600);
+  let html = await page.content();
+  let link_Article = await getArticleUrl(html);
 
-const scrapeArticleData = async (url, page) => {
-  try {
-    await page.goto(url, { waitUntil: "networkidle2" });
-    await page.waitForSelector("#preprints");
-    await page.click("#preprints");
-    await page.waitForTimeout(1500);
-    await page.waitForSelector("#documents");
-    await page.click("#documents");
-    await page.waitForTimeout(1600);
-    let html = await page.content();
-    let link_Article = await getArticleUrl(html);
+  const selector =
+    "div.Columns-module__FxWfo > div:nth-child(2) > div > els-results-layout > els-paginator > nav > ul > li:last-child > button";
 
-    const selector =
-      "div.Columns-module__FxWfo > div:nth-child(2) > div > els-results-layout > els-paginator > nav > ul > li:last-child > button";
-
-    if (await page.$(selector)) {
-      while (await page.$eval(selector, (button) => !button.disabled)) {
-        await page.click(selector);
-        await page.waitForTimeout(1500);
-        const html = await page.content();
-        const link = await getArticleUrl(html);
-        link_Article = [...link_Article, ...link];
-      }
+  if (await page.$(selector)) {
+    while (await page.$eval(selector, (button) => !button.disabled)) {
+      await page.click(selector);
+      await page.waitForTimeout(1500);
+      const html = await page.content();
+      const link = await getArticleUrl(html);
+      link_Article = [...link_Article, ...link];
     }
-
-    if (link_Article.length == 0) {
-      await scraper();
-    } else {
-      console.log("Number of Articles: ", link_Article.length);
-      // console.log("Scraping Articles: ");
-      // link_Article.length
-      for (let i = roundArticle; i < link_Article.length; i++) {
-        roundArticle = i;
-        console.log("Article : ", i + 1);
-        const article_url = link_Article[i];
-        await page.goto(article_url, { waitUntil: "networkidle2" });
-        const article_data = await getArticleDetail(page, article_url);
-        article_detail.push(article_data);
-      }
-      roundArticle = 0;
-      const result = article_detail;
-      article_detail = [];
-
-      return result;
-    }
-  } catch (error) {
-    console.error("An error occurred:", error);
-    await scraper();
-    return null;
   }
+  console.log("");
+  console.log(`Scraping Author ${index_aouthor} of ${lenght_author}: ${url.name}`);
+  console.log(`URL: ${url.url}`);
+  console.log("Number of Articles: ", link_Article.length);
+  console.log("");
+
+  const batchSize = 5; 
+  const article_detail = [];
+  for (let i = 0; i < link_Article.length; i += batchSize) {
+    const batchUrls = link_Article.slice(i, i + batchSize);
+    const promises = batchUrls.map(async (article_url, index) => {
+      // console.log("Article =", i + index + 1);
+      const articlePage = await page.browser().newPage();
+      await articlePage.goto(article_url, { waitUntil: "networkidle2" });
+      const article_data = await getArticleDetail(articlePage, article_url);
+      await articlePage.close();
+      return article_data;
+    });
+
+    const results = await Promise.allSettled(promises);
+
+    results.forEach((result) => {
+      if (result.status === "fulfilled") {
+        article_detail.push(result.value);
+      } else {
+        console.error("Failed to scrape article:", result.reason);
+      }
+    });
+  }
+
+  return article_detail;
 };
 
 const scrapeAuthorData = async (url, page) => {
@@ -237,13 +234,13 @@ const getSourceID = async (page) => {
         const id = $("#source-preview-details-link").attr("href").split("/")[2];
         if (!sourceID.includes(id)) {
           sourceID.push(id);
-          console.log("sourceIDAll : ", sourceID);
+          // console.log("sourceIDAll : ", sourceID);
           return id;
         } else {
           return id;
         }
       } else {
-        console.log("Element does not have ViewFullSource");
+        // console.log("Element does not have ViewFullSource");
         return null;
       }
     } else {
@@ -268,6 +265,7 @@ const getArticleDetail = async (page, url) => {
     let check_journal = false;
     if (source_id) {
       check_journal = true;
+      // console.log("source_id = ",source_id)
       // await insertDataToJournal(journal);
     }
 
@@ -302,12 +300,12 @@ const getArticleDetail = async (page, url) => {
 
     return article_data;
   } catch (error) {
+    // Handle the error here
     console.error("An error occurred:", error);
     await scraper();
     return null;
   }
 };
-
 
 const scrapViewFullSource = async (page) => {
   try {
@@ -318,6 +316,7 @@ const scrapViewFullSource = async (page) => {
       return null;
     }
   } catch (error) {
+    // Handle the error here
     console.error("An error occurred:", error);
     await scraper();
     return null;
@@ -340,6 +339,7 @@ const scrapCo_Author = async (html) => {
     });
     return co_author_data;
   } catch (error) {
+    // Handle the error here
     console.error("An error occurred:", error);
     await scraper();
     return null;
@@ -370,6 +370,7 @@ const scrapCitation = async (url, page) => {
 
     return citations;
   } catch (error) {
+    // Handle the error here
     console.error("An error occurred:", error);
     await scraper();
     return null;
@@ -400,6 +401,7 @@ const scrapDocument = async (url, page) => {
 
     return documents;
   } catch (error) {
+    // Handle the error here
     console.error("An error occurred:", error);
     await scraper();
     return null;
@@ -412,6 +414,7 @@ const getScopusID = async (url) => {
     const scopusID = match.match(/=(\d+)/)[1];
     return scopusID;
   } catch (error) {
+    // Handle the error here
     console.error("An error occurred:", error);
     await scraper();
     return null;
@@ -437,6 +440,7 @@ const scrapSubjectArea = async (page) => {
     }
     return subjectArea;
   } catch (error) {
+    // Handle the error here
     console.error("An error occurred:", error);
     await scraper();
     return null;
@@ -445,6 +449,4 @@ const scrapSubjectArea = async (page) => {
 
 module.exports = {
   scraper,
-  sourceID,
-  allAuthors,
 };

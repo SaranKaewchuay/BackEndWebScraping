@@ -1,7 +1,7 @@
 const puppeteer = require("puppeteer");
 const cheerio = require("cheerio");
 const axios = require("axios");
-const { insertDataToDbScholar  } = require("../scraper/insertToDb");
+const { insertDataToDbScholar  } = require("./insertToDb");
 const userAgent = require('user-agents');
 
 process.setMaxListeners(100);
@@ -139,22 +139,13 @@ const getAuthorAllDetail = async (authorObject, number_author, length) => {
       console.log("Author ", number_author, " / ", length, ": " + authorObject.name);
       console.log("Number of Articles: ", content.length);
 
-      const batchSize = 50; // Set the desired batch size
-
-      const article_detail_promises = [];
-      
-      for (let i = 0; i < content.length; i += batchSize) {
-        console.log(" i = ",i)
-        const batch = content.slice(i, i + batchSize);
-      
-        const batch_promises = batch.map(async (article_sub_data) => {
+      const article_detail_promises = content.map(
+        async (article_sub_data, i) => {
           const detail_page_url = article_sub_data.url;
           return fetchArticleDetail(browser, detail_page_url);
-        });
-      
-        article_detail_promises.push(...batch_promises);
-      }
-      
+        }
+      );
+
       authorAllDetail = await getAuthorDetail(html, url_checked);
       authorAllDetail.articles = await Promise.all(article_detail_promises);
 

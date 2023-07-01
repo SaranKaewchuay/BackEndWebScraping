@@ -4,7 +4,7 @@ const cheerio = require("cheerio");
 const {
   insertDataToDbScopus,
 } = require("./insertToDb");
-let roundScraping = 0; 
+let roundScraping = 528; // Scraping Author 178 of 539: Asst.Prof.Dr.Thippawan Bunsanong
 let allAuthors = [];
 let author_backup = {};
 
@@ -48,7 +48,7 @@ const scraper = async () => {
   } catch (error) {
     console.error("An error occurred:", error);
     await scraper();
-    return [];
+    return []; // Return an empty array if an error occurs
   }
 };
 
@@ -302,6 +302,7 @@ const getArticleDetail = async (page, url) => {
 
     return article_data;
   } catch (error) {
+    // Handle the error here
     console.error("An error occurred:", error);
     await scraper();
     return null;
@@ -318,6 +319,7 @@ const scrapViewFullSource = async (page) => {
       return null;
     }
   } catch (error) {
+    // Handle the error here
     console.error("An error occurred:", error);
     await scraper();
     return null;
@@ -340,6 +342,7 @@ const scrapCo_Author = async (html) => {
     });
     return co_author_data;
   } catch (error) {
+    // Handle the error here
     console.error("An error occurred:", error);
     await scraper();
     return null;
@@ -370,6 +373,7 @@ const scrapCitation = async (url, page) => {
 
     return citations;
   } catch (error) {
+    // Handle the error here
     console.error("An error occurred:", error);
     await scraper();
     return null;
@@ -400,6 +404,7 @@ const scrapDocument = async (url, page) => {
 
     return documents;
   } catch (error) {
+    // Handle the error here
     console.error("An error occurred:", error);
     await scraper();
     return null;
@@ -412,6 +417,7 @@ const getScopusID = async (url) => {
     const scopusID = match.match(/=(\d+)/)[1];
     return scopusID;
   } catch (error) {
+    // Handle the error here
     console.error("An error occurred:", error);
     await scraper();
     return null;
@@ -437,6 +443,7 @@ const scrapSubjectArea = async (page) => {
     }
     return subjectArea;
   } catch (error) {
+    // Handle the error here
     console.error("An error occurred:", error);
     await scraper();
     return null;

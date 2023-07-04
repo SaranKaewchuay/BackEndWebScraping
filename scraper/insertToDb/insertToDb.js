@@ -1,8 +1,8 @@
-const Author = require('../models/Author');
-const Article = require('../models/Article');
-const AuthorScopus = require('../models/AuthorScopus');
-const ArticleScopus = require('../models/ArticleScopus.js');
-const Journal = require('../models/journal.js');
+const Author = require('../../models/Author');
+const Article = require('../../models/Article');
+const AuthorScopus = require('../../models/AuthorScopus');
+const ArticleScopus = require('../../models/ArticleScopus.js');
+const Journal = require('../../models/journal.js');
 
 const { ObjectId } = require('mongodb');
 process.setMaxListeners(100);
@@ -54,12 +54,13 @@ const insertDataToDbScholar = async (data) => {
       }
 };
 
-const insertDataToDbScopus = async (data,author_name) => {
+const insertAuthorDataToDbScopus = async (data,author_name) => {
     try {
         const objectId = new ObjectId();
 
         const newAuthor = new AuthorScopus({
             _id: objectId,
+            author_scopus_id: data.author_scopus_id,
             author_name: data.name,
             citations: data.citation,
             citations_by: data.citations_by,
@@ -71,33 +72,45 @@ const insertDataToDbScopus = async (data,author_name) => {
             url: data.url,
         });
 
-        const articles = data.articles.map((articleData) => {
-          const article = {
-            article_name: articleData.name,
-            ...(articleData.hasOwnProperty('source_id') && { source_id: articleData.source_id }),
-            co_author: articleData.co_author,
-            document_type: articleData.document_type,
-            source_type: articleData.source_type,
-            issn: articleData.issn,
-            original_language: articleData.original_language,
-            publisher: articleData.publisher,
-            author_keywords: articleData.author_keywords, 
-            abstract: articleData.abstract,
-            url: articleData.url,
-            author_id: objectId,
-          };
-        
-          return article;
-        });
-        
-
-        await ArticleScopus.insertMany(articles);
         await newAuthor.save();
-        console.log('Authors and Articles Data of '+author_name+' saved successfully to MongoDB.');
-        console.log("");
+        console.log('\nAuthors Data of '+author_name+' saved successfully to MongoDB.\n');
+
     } catch (error) {
-        console.error('Error saving Authors and Articles data to MongoDB:', error);
+        console.error('Error saving Authors data to MongoDB:', error);
     }
+};
+
+
+const insertArticleDataToDbScopus = async (data,article_name) => {
+  try {
+
+      const articles = data.map((articleData) => {
+        const article = {
+          article_name: articleData.name,
+          ...(articleData.hasOwnProperty('source_id') && { source_id: articleData.source_id }),
+          co_author: articleData.co_author,
+          document_type: articleData.document_type,
+          source_type: articleData.source_type,
+          issn: articleData.issn,
+          original_language: articleData.original_language,
+          publisher: articleData.publisher,
+          author_keywords: articleData.author_keywords, 
+          abstract: articleData.abstract,
+          url: articleData.url,
+          author_scopus_id: articleData.author_scopus_id,
+        };
+      
+        return article;
+      });
+      
+
+      await ArticleScopus.insertMany(articles);
+
+      console.log('\nAuthors and Articles Data of '+article_name+' saved successfully to MongoDB.\n');
+      console.log("");
+  } catch (error) {
+      console.error('Error saving Articles data to MongoDB:', error);
+  }
 };
 
 const insertDataToJournal = async (data) => {
@@ -117,7 +130,7 @@ const insertDataToJournal = async (data) => {
         });
 
         await newJournal.save();
-        // console.log('Journal Data saved successfully to MongoDB.');
+        // console.log('\nJournal Data saved successfully to MongoDB.\n');
     } catch (error) {
         console.error('Error saving data to MongoDB:', error);
     }
@@ -125,6 +138,7 @@ const insertDataToJournal = async (data) => {
 
 module.exports = {
     insertDataToDbScholar,
-    insertDataToDbScopus,
+    insertAuthorDataToDbScopus,
+    insertArticleDataToDbScopus,
     insertDataToJournal
 };

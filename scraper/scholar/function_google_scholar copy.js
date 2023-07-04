@@ -1,7 +1,7 @@
 const puppeteer = require("puppeteer");
 const cheerio = require("cheerio");
 const axios = require("axios");
-const { insertDataToDbScholar  } = require("../scraper/insertToDb");
+const { insertDataToDbScholar  } = require("../insertToDb/insertToDb");
 const userAgent = require('user-agents');
 
 process.setMaxListeners(100);
@@ -9,6 +9,7 @@ let numArticle = null;
 let linkError = []
 let url_not = []
 let url_author
+
 
 const getUserScholarId = async (url) => {
   try {

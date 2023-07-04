@@ -113,7 +113,7 @@ const insertArticleDataToDbScopus = async (data,article_name) => {
   }
 };
 
-const insertDataToJournal = async (data) => {
+const insertDataToJournal = async (data,source_id) => {
     try {
         const objectId = new ObjectId();
         const newJournal = new Journal({
@@ -130,7 +130,7 @@ const insertDataToJournal = async (data) => {
         });
 
         await newJournal.save();
-        // console.log('\nJournal Data saved successfully to MongoDB.\n');
+        console.log("Journal Data | Source ID:", source_id, "saved successfully to MongoDB.");
     } catch (error) {
         console.error('Error saving data to MongoDB:', error);
     }

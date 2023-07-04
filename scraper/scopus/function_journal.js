@@ -3,7 +3,7 @@ const cheerio = require("cheerio");
 const { insertDataToJournal } = require("../insertToDb/insertToDb");
 const journalData = require("../../journal_data/journal_data");
 
-let roundJournal = 205;
+let roundJournal = 0;
 let journal = [];
 
 const scrapJournal = async () => {
@@ -19,8 +19,8 @@ const scrapJournal = async () => {
         try {
           const data = await scraperJournalData(journalItem);
           console.log("Journal =", data);
-          await insertDataToJournal(data);
-          console.log("Journal Data | Source ID:", journalItem, "saved successfully to MongoDB.");
+          await insertDataToJournal(data,journalItem);
+
           return { status: "fulfilled", value: data };
         } catch (error) {
           console.error("An error occurred while scraping the journal item:", error);

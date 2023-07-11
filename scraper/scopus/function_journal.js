@@ -1,7 +1,9 @@
 const puppeteer = require("puppeteer");
 const cheerio = require("cheerio");
 const { insertDataToJournal } = require("../insertToDb/insertToDb");
-const journalData = require("../../journal_data/journal_data");
+const { updateDataToJournal } = require("../insertToDb/insertToDb");
+const { getyearJournal } = require("../../qurey/qurey_function");
+const { getSourceID, getAllSourceIDJournal } = require("../../qurey/qurey_function");
 
 let roundJournal = 0;
 let journal = [];
@@ -9,21 +11,48 @@ let journal = [];
 const scrapJournal = async () => {
   try {
     const batchSize = 5;
+    const journalData = await getAllSourceIDJournal()
+    if(journalData.length === 0){
+      console.log("Journal Is Empty")
+    }
+  
     for (let i = roundJournal; i < journalData.length; i += batchSize) {
       const batch = journalData.slice(i, i + batchSize);
-
       const promises = batch.map(async (journalItem, index) => {
-        const currentIndex = i + index + 1;
-        console.log(currentIndex, "/", journalData.length, "| Source ID:", journalItem);
 
         try {
-          const data = await scraperJournalData(journalItem);
-          console.log("Journal =", data);
-          await insertDataToJournal(data,journalItem);
-
-          return { status: "fulfilled", value: data };
+          const browser = await puppeteer.launch({ headless: "new" });
+          const page = await browser.newPage();
+          const currentIndex = i + index + 1;
+          console.log(currentIndex,"/",journalData.length,"| Source ID:",journalItem);
+          const link = `https://www.scopus.com/sourceid/${journalItem}`;
+          await page.goto(link, { waitUntil: "networkidle2" });
+  
+          const sourceIDs = await getSourceID(journalItem);
+          const yearJournal = await getyearJournal(journalItem);
+          const dropdownOptions = await dropDownOption(page);
+          console.log("\nSourceID == ",journalItem)
+          console.log("dropdownOptions == ",dropdownOptions.length)
+          console.log("yearJournal == ",yearJournal,"\n")
+          if (sourceIDs == false) {
+            console.log("Scrap All Journal Data");
+            const data = await scraperJournalData(journalItem, yearJournal);
+            console.log("Journal =", data);
+            await insertDataToJournal(data, journalItem);
+            return { status: "fulfilled", value: data };
+          } else if (dropdownOptions.length > yearJournal) {
+            console.log("dropdownOptions = ",dropdownOptions.length)
+            console.log("yearJournal = ",yearJournal)
+            console.log("Update Journal Data Source ID : ",journalItem);
+            const new_cite_source_year = await processDropdowns(page,yearJournal);
+            await updateDataToJournal(new_cite_source_year, journalItem);
+            return { status: "fulfilled", value: new_cite_source_year };
+          } else {
+            console.log("------------------------------");
+            console.log("skip source_id", journalItem);
+            console.log("------------------------------");
+          }
         } catch (error) {
-          console.error("An error occurred while scraping the journal item:", error);
           return { status: "rejected", reason: error };
         }
       });
@@ -44,14 +73,75 @@ const scrapJournal = async () => {
   }
 };
 
+const scrapOneJournal = async (source_id) => {
+  try {
+    const batchSize = 5;
+    let roundJournal = 0;
+
+    const journal_data = [];
+    const journal_All = source_id.split(",").map(e => e.trim());
+
+    let sizeLoop =
+      journal_All.length < batchSize && journal_All.length > 0
+        ? journal_All.length
+        : batchSize;
+
+    for (let i = roundJournal; i < journal_All.length; i += sizeLoop) {
+      const batch = journal_All.slice(i, i + batchSize);
+
+      const promises = batch.map(async (journalItem, index) => {
+        const currentIndex = i + index + 1;
+        console.log(
+          currentIndex,
+          "/",
+          journal_All.length,
+          "| Source ID:",
+          journalItem
+        );
+
+        try {
+          const data = await scraperJournalData(journalItem, 0);
+          console.log("Finish Scraping Journal ID: ", journalItem);
+          return { status: "fulfilled", value: data };
+        } catch (error) {
+          console.error(
+            "An error occurred while scraping the journal item:",
+            error
+          );
+          return { status: "rejected", reason: error };
+        }
+      });
+
+
+
+      const results = await Promise.allSettled(promises);
+      results.forEach((result) => {
+        if (result.status === "fulfilled" && result.value !== null) {
+          journal_data.push(result.value.value);
+        }
+      });
+      roundJournal += batchSize;
+
+    }
+    console.log("journal_data =", journal_data);
+    return journal_data;
+  } catch (error) {
+    console.error("An error occurred while scraping the journal:", error);
+    return [];
+  }
+};
+
 
 //scrapJournalDetail()
-const scraperJournalData = async (source_id) => {
+const scraperJournalData = async (source_id, yearJournal) => {
   try {
     const browser = await puppeteer.launch({ headless: "new" });
     const page = await browser.newPage();
     const link = `https://www.scopus.com/sourceid/${source_id}`;
     await page.goto(link, { waitUntil: "networkidle2" });
+    await page.waitForSelector(
+      "#jourlSection > div.col-md-9.col-xs-9.noPadding > div"
+    );
     const html = await page.content();
     const $ = cheerio.load(html);
 
@@ -100,7 +190,7 @@ const scraperJournalData = async (source_id) => {
 
     await Promise.all(fieldPromises);
 
-    journal.cite_source = await processDropdowns(page);
+    journal.cite_source = await processDropdowns(page, yearJournal);
 
     await browser.close();
 
@@ -112,13 +202,12 @@ const scraperJournalData = async (source_id) => {
   }
 };
 
-
-const processDropdowns = async (page) => {
-  const dataCitation = [];
+const dropDownOption = async (page) => {
   const dropdownSelector = 'select[name="year"]';
+  await page.waitForTimeout(1200)
   if (await page.$(dropdownSelector)) {
     await page.waitForSelector(dropdownSelector);
-    
+
     // getDropdownOptions()
     const dropdownOptions = await page.evaluate((selector) => {
       const dropdown = document.querySelector(selector);
@@ -127,14 +216,26 @@ const processDropdowns = async (page) => {
       );
       return options;
     }, dropdownSelector);
+    return dropdownOptions;
+  }
+};
 
-    for (let index = 0; index < dropdownOptions.length; index++) {
-      const option = dropdownOptions[index];
-      // console.log("year:", option);
+const processDropdowns = async (page, yearJournal) => {
+  const dataCitation = [];
+  const dropDownOptions = await dropDownOption(page);
+  let loopDropDown;
+  if (dropDownOptions) {
+    if (yearJournal == 0) {
+      loopDropDown = dropDownOptions.length;
+    } else {
+      loopDropDown = dropDownOptions.length - yearJournal;
+    }
+    for (let index = 0; index < loopDropDown; index++) {
+      const option = dropDownOptions[index];
       await page.click(
         "#year-button > span.ui-selectmenu-icon.ui-icon.btn-primary.btn-icon.ico-navigate-down.flexDisplay.flexAlignCenter.flexJustifyCenter.flexColumn"
       );
-      await page.waitForTimeout(1200);
+      await page.waitForTimeout(1700);
       await page.click(`#ui-id-${index + 1}`);
       await page.waitForTimeout(2000);
       const html = await page.content();
@@ -159,9 +260,6 @@ const processDropdowns = async (page) => {
   }
   return dataCitation.length > 0 ? dataCitation : null;
 };
-
-
-
 
 const scrapSubjectAreaJournal = async (html) => {
   try {
@@ -206,4 +304,6 @@ const scrapCategoryJournal = async (html) => {
 
 module.exports = {
   scrapJournal,
+  scraperJournalData,
+  scrapOneJournal,
 };

@@ -81,14 +81,16 @@ const insertAuthorDataToDbScopus = async (data,author_name) => {
 };
 
 
-const insertArticleDataToDbScopus = async (data,article_name) => {
+const insertArticleDataToDbScopus = async (data, scopus_id) => {
   try {
 
       const articles = data.map((articleData) => {
         const article = {
+          eid: articleData.eid,
           article_name: articleData.name,
           ...(articleData.hasOwnProperty('source_id') && { source_id: articleData.source_id }),
           co_author: articleData.co_author,
+          corresponding: articleData.corresponding,
           document_type: articleData.document_type,
           source_type: articleData.source_type,
           issn: articleData.issn,
@@ -106,7 +108,7 @@ const insertArticleDataToDbScopus = async (data,article_name) => {
 
       await ArticleScopus.insertMany(articles);
 
-      console.log('\nAuthors and Articles Data of '+article_name+' saved successfully to MongoDB.\n');
+      console.log('\nArticles Data of | Scopus ID: ' + scopus_id + ' saved successfully to MongoDB.\n');
       console.log("");
   } catch (error) {
       console.error('Error saving Articles data to MongoDB:', error);
@@ -136,9 +138,46 @@ const insertDataToJournal = async (data,source_id) => {
     }
 };
 
+
+const updateDataToJournal = async (data, source_id) => {
+  const newData = data.map(item => {
+    return {
+      year: item.year,
+      citation: item.citation,
+      category: [
+        {
+          category_name: item.category[0].category_name,
+          sub_category: item.category[0].sub_category,
+          rank: item.category[0].rank,
+          percentile: item.category[0].percentile
+        }
+      ]
+    };
+  });
+  console.log('mynewdata');
+  newData.forEach(item => console.log(item));
+  try {
+    const oldData = await Journal.findOne({ source_id });
+
+    if (!oldData) {
+      console.log("Source ID not found in the database.");
+      return;
+    }
+    oldData.cite_source.push(...newData);
+    oldData.cite_source.sort((a, b) => b.year - a.year);
+    await oldData.save();
+
+    console.log("Journal Data | Source ID:", source_id, "updeted successfully to MongoDB.");
+    return oldData;
+  } catch (error) {
+    console.error("An error occurred:", error);
+  }
+}
+
 module.exports = {
     insertDataToDbScholar,
     insertAuthorDataToDbScopus,
     insertArticleDataToDbScopus,
-    insertDataToJournal
+    insertDataToJournal,
+    updateDataToJournal 
 };

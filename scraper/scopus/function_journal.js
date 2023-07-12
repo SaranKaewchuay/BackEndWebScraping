@@ -8,14 +8,22 @@ const { getSourceID, getAllSourceIDJournal } = require("../../qurey/qurey_functi
 let roundJournal = 0;
 let journal = [];
 
-const scrapJournal = async () => {
+const scrapJournal = async (sourceID) => {
   try {
+    let hasSource = false
     const batchSize = 5;
-    const journalData = await getAllSourceIDJournal()
-    if(journalData.length === 0){
-      console.log("Journal Is Empty")
+    let journalData
+   
+    if (typeof sourceID === 'undefined'){
+      hasSource = true
+      journalData = await getAllSourceIDJournal()
+      if(journalData.length === 0){
+        console.log("Journal Is Empty")
+      }
+    }else if(sourceID || sourceID.length > 0){
+      journalData = sourceID
     }
-  
+    
     for (let i = roundJournal; i < journalData.length; i += batchSize) {
       const batch = journalData.slice(i, i + batchSize);
       const promises = batch.map(async (journalItem, index) => {
@@ -29,15 +37,21 @@ const scrapJournal = async () => {
           await page.goto(link, { waitUntil: "networkidle2" });
   
           const sourceIDs = await getSourceID(journalItem);
-          const yearJournal = await getyearJournal(journalItem);
-          const dropdownOptions = await dropDownOption(page);
-          console.log("\nSourceID == ",journalItem)
-          console.log("dropdownOptions == ",dropdownOptions.length)
-          console.log("yearJournal == ",yearJournal,"\n")
+          // console.log("\nSourceID == ",journalItem)
+          let yearJournal = 0
+          let dropdownOptions = []
+          if(hasSource){
+            // console.log("เข้า")
+            yearJournal = await getyearJournal(journalItem);
+            dropdownOptions = await dropDownOption(page);     
+            console.log("dropdownOptions == ",dropdownOptions.length)
+            console.log("yearJournal == ",yearJournal,"\n")
+          }
+         
           if (sourceIDs == false) {
-            console.log("Scrap All Journal Data");
+            // console.log("Scraping Journal Data");
             const data = await scraperJournalData(journalItem, yearJournal);
-            console.log("Journal =", data);
+            // console.log("Journal =", data);
             await insertDataToJournal(data, journalItem);
             return { status: "fulfilled", value: data };
           } else if (dropdownOptions.length > yearJournal) {
@@ -52,6 +66,7 @@ const scrapJournal = async () => {
             console.log("skip source_id", journalItem);
             console.log("------------------------------");
           }
+          await browser.close();
         } catch (error) {
           return { status: "rejected", reason: error };
         }

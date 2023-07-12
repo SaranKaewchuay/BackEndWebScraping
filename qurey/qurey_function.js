@@ -113,6 +113,19 @@ const getCountRecordInJournal = async () => {
   }
 };
 
+const getCountRecordInAuthor = async () => {
+  try {
+    const num = await AuthorScopus.countDocuments();
+    if(typeof num  === 'undefined'){
+        return 0
+    }else{
+        return num;
+    }
+   
+  } catch (error) {
+    return 0    
+  }
+};
 
 
 const getAllSourceIDJournal = async () => {
@@ -142,5 +155,6 @@ module.exports = {
   checkHasSourceId,
   updateNewDoc,
   getAllSourceIDJournal,
-  getCountRecordInJournal
+  getCountRecordInJournal,
+  getCountRecordInAuthor
 };

@@ -1,17 +1,21 @@
 const axios = require("axios");
 const puppeteer = require("puppeteer");
 const cheerio = require("cheerio");
-const { insertAuthorDataToDbScopus  } = require("../insertToDb/insertToDb");
-
-const batchSize = 5; 
+const { insertAuthorDataToDbScopus, updateDataToAuthor  } = require("../insertToDb/insertToDb");
+const { getCountRecordInAuthor } = require("../../qurey/qurey_function");
+const batchSize = 3; 
 let roundScraping = 0;
 let allAuthors = [];
 
+
+
 const scraperAuthorScopus = async () => {
   try {
+    let countRecordInAuthor  = await getCountRecordInAuthor()
+    console.log("countRecordInAuthor = ",countRecordInAuthor)
     const allURLs = await getURLScopus();
-
-    for (let i = roundScraping; i < allURLs.length; i += batchSize) {
+    //allURLs.length
+    for (let i = roundScraping; i < 3; i += batchSize) {
       const batchURLs = allURLs.slice(i, i + batchSize);
 
       roundScraping = i
@@ -40,7 +44,13 @@ const scraperAuthorScopus = async () => {
         for (const result of results) {
           if (result.status === "fulfilled") {
             const data = result.value.author;
-            await insertAuthorDataToDbScopus(data, data.name);
+            if( countRecordInAuthor > 0){
+              // console.log("Round 2")
+                await updateDataToAuthor(data)
+            }else{
+                await insertAuthorDataToDbScopus(data, data.name);
+            }
+            
           }
           else if (result.status === "rejected") {
             console.error("Error occurred while scraping:", result.reason);
@@ -100,6 +110,7 @@ const scraperOneAuthorScopus = async (scopus_id) => {
 const scrapeAuthorData = async (url, page) => {
   try {
     await page.goto(url, { waitUntil: "networkidle2" });
+    await page.waitForTimeout(1300)
     const html = await page.content();
     const $ = cheerio.load(html);
     const author = {

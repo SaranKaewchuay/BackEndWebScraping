@@ -8,7 +8,8 @@ const {
   checkHasSourceId,
   updateNewDoc,
 } = require("../../qurey/qurey_function");
-const { scraperJournalData } = require("./function_journal");
+const { scrapJournal, scraperJournalData } = require("./function_journal");
+const { createJsonScourceID } = require("./function_Json");
 
 const batchSize = 3;
 let roundScraping = 0;
@@ -17,12 +18,13 @@ let allURLs;
 let checkUpdate;
 let checkNotUpdate;
 let errorURLs = [];
+let sourceID = [];
 
 const scraperArticleScopus = async () => {
   try {
     allURLs = await getURLScopus();
     //allURLs.length
-    while (roundScraping < allURLs.length) {
+    while (roundScraping < 3) {
       console.log("roundScraping == ", roundScraping);
       const batchURLs = allURLs.slice(roundScraping, roundScraping + batchSize);
 
@@ -38,6 +40,8 @@ const scraperArticleScopus = async () => {
           console.log(`URL: ${url.url}`);
 
           await page.goto(url.url, { waitUntil: "networkidle2" });
+          await page.waitForTimeout(1600)
+
           const html = await page.content();
 
           await page.waitForSelector(
@@ -105,7 +109,7 @@ const scraperArticleScopus = async () => {
       for (const result of fulfilledResults) {
         const data = result.value;
         if (data.article.length !== 0 || data.checkUpdate) {
-          await insertArticleDataToDbScopus(data.article, data.scopus_id);
+          await insertArticleDataToDbScopus(data.article);
           if (data.checkUpdate) {
             await updateNewDoc(data.scopus_id, data.numDocInPage);
           }
@@ -123,6 +127,8 @@ const scraperArticleScopus = async () => {
       }
       roundScraping += batchSize;
     }
+    console.log("\nStart Scraping Journal\n")
+    await scrapJournal(sourceID)
 
     console.log("Finish Scraping Scopus");
     return allArticle;
@@ -180,7 +186,7 @@ const scraperOneArticleScopus = async (eid) => {
         }
       });
     }
-
+    await browser.close();
     return article_detail;
   } catch (error) {
     return [];
@@ -400,7 +406,6 @@ const getArticleDetail = async (page, url, author_url) => {
   }
 };
 
-let sourceID = [];
 
 const getSourceID = async (page, author_scopus_id) => {
   try {
@@ -431,8 +436,9 @@ const getSourceID = async (page, author_scopus_id) => {
         } else if (!sourceID.includes(source_id)) {
           // first
           sourceID.push(source_id);
-          const data = await scraperJournalData(source_id, 0);
-          await insertDataToJournal(data, source_id);
+          createJsonScourceID(source_id)
+          // const data = await scraperJournalData(source_id, 0);
+          // await insertDataToJournal(data, source_id);
         }
         return source_id;
       } else {

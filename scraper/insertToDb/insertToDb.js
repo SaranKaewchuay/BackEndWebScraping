@@ -81,10 +81,11 @@ const insertAuthorDataToDbScopus = async (data,author_name) => {
 };
 
 
-const insertArticleDataToDbScopus = async (data, scopus_id) => {
+const insertArticleDataToDbScopus = async (data) => {
   try {
-
+    let scopus_id 
       const articles = data.map((articleData) => {
+        scopus_id = articleData.author_scopus_id
         const article = {
           eid: articleData.eid,
           article_name: articleData.name,
@@ -174,10 +175,36 @@ const updateDataToJournal = async (data, source_id) => {
   }
 }
 
+const updateDataToAuthor = async (data) => {
+  try {
+    AuthorScopus.updateOne(
+      { "scopus_id": data.author_scopus_id},
+      {
+         $set: {
+            "author_scopus_id": data.author_scopus_id,
+            "author_name": data.name,
+            "citations": data.citation,
+            "citations_by": data.citations_by,
+            "documents":data.documents,
+            "h_index": data.h_index,
+            "subject_area": data.subject_area,
+            "citations_graph": data.citations_graph,
+            "documents_graph": data.documents_graph,
+            "url": data.url,
+         }
+      }
+   )
+   console.log("Author Data | Source ID:",  data.author_scopus_id, "updeted successfully to MongoDB.");   
+  } catch (error) {
+    // console.error("An error occurred:", error);
+  }
+}
+
 module.exports = {
     insertDataToDbScholar,
     insertAuthorDataToDbScopus,
     insertArticleDataToDbScopus,
     insertDataToJournal,
-    updateDataToJournal 
+    updateDataToJournal,
+    updateDataToAuthor
 };

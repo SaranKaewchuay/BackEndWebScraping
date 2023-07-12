@@ -33,6 +33,10 @@ router.get("/scraper-scopus-cron", async (req, res) => {
     if ((await getCountRecordInJournal()) > 0) {
       axios.get("http://localhost:8002/scraper/scopus-journal");
     }
+    // res.status(200).json({
+    //   message: "Successful scraping",
+    // });
+
   } catch (error) {
     console.error("Cron job error:", error);
   }

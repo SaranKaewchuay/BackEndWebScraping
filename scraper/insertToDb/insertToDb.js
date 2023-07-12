@@ -177,8 +177,8 @@ const updateDataToJournal = async (data, source_id) => {
 
 const updateDataToAuthor = async (data) => {
   try {
-    AuthorScopus.updateOne(
-      { "scopus_id": data.author_scopus_id},
+    await AuthorScopus.updateOne(
+      { "author_scopus_id": data.author_scopus_id},
       {
          $set: {
             "author_scopus_id": data.author_scopus_id,

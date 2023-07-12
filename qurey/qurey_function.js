@@ -3,14 +3,29 @@ const ArticleScopus = require("../models/ArticleScopus");
 const Journal = require("../models/journal");
 const connectToMongoDB = require("./connectToMongoDB");
 (async () => {
+
   await connectToMongoDB();
+
 })();
+
+let oldAuthorData = []
+
+const getOldAuthorData = async () => {
+  try {
+    const authors = await AuthorScopus.find();
+    oldAuthorData.push(authors);
+  } catch (error) {
+    // Handle the error here
+    // console.error('Error occurred while fetching old author data:', error);
+  }
+};
+
 
 const getOldNumDocInPage = async (scopus_id) => {
   try {
-    const authors = await AuthorScopus.find({ author_scopus_id: scopus_id });
-    if (authors.length > 0) {
-      return Number(authors[0].documents);
+    const author = oldAuthorData[0].find(item => item.author_scopus_id === scopus_id);
+    if (author) {
+      return Number(author.documents);
     } else {
       return 0;
     }
@@ -19,6 +34,21 @@ const getOldNumDocInPage = async (scopus_id) => {
     return 0;
   }
 };
+
+// const getOldNumDocInPage = async (scopus_id) => {
+//   try {
+//     const authors = await AuthorScopus.find({ author_scopus_id: scopus_id });
+//     if (authors.length > 0) {
+//       return Number(authors[0].documents);
+//     } else {
+//       return 0;
+//     }
+//   } catch (error) {
+//     console.error("An error occurred:", error);
+//     return 0;
+//   }
+// };
+
 
 const checkHasSourceId = async (source_id) => {
   try {
@@ -156,5 +186,6 @@ module.exports = {
   updateNewDoc,
   getAllSourceIDJournal,
   getCountRecordInJournal,
-  getCountRecordInAuthor
+  getCountRecordInAuthor,
+  getOldAuthorData
 };

@@ -10,10 +10,8 @@ const {
   getNumArticleInDB,
   checkHasSourceId,
   updateNewDoc,
-  getOldAuthorData
 } = require("../../qurey/qurey_function");
 const { scrapJournal, scraperJournalData } = require("./function_journal");
-// const { createJsonScourceID } = require("./function_Json");
 
 const batchSize = 3;
 let roundScraping = 0;
@@ -24,13 +22,25 @@ let checkNotUpdate;
 let errorURLs = [];
 let sourceID = [];
 
+const waitForElement = async (selector, maxAttempts = 10, delay = 200) => {
+  let attempts = 0;
+  while (attempts < maxAttempts) {
+    try {
+      await page.waitForSelector(selector, { timeout: 100 });
+      break;
+    } catch (error) {
+      attempts++;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+};
+
 const scraperArticleScopus = async () => {
   try {
-    await getOldAuthorData()
     allURLs = await getURLScopus();
     //allURLs.length
     while (roundScraping < 3) {
-      console.log("\nroundScraping == ", roundScraping,"\n");
+      console.log("\nroundScraping == ", roundScraping, "\n");
       const batchURLs = allURLs.slice(roundScraping, roundScraping + batchSize);
 
       const batchPromises = batchURLs.map(async (url, index) => {
@@ -49,25 +59,25 @@ const scraperArticleScopus = async () => {
           console.log(`URL: ${url.url}`);
 
           await page.goto(url.url, { waitUntil: "networkidle2" });
-          await page.waitForTimeout(1600);
-          await page.waitForSelector(
-            "#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > section > div > div:nth-child(2) > div > div > div:nth-child(1) > span.Typography-module__lVnit.Typography-module__ix7bs.Typography-module__Nfgvc"
-          );
+          // await page.waitForTimeout(1600);
+          const waitElement =
+            "#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > section > div > div:nth-child(2) > div > div > div:nth-child(1) > span.Typography-module__lVnit.Typography-module__ix7bs.Typography-module__Nfgvc";
+          await waitForElement(waitElement);
+
           const html = await page.content();
 
-         
           const numDocInPage = await getDocumentInpage(html);
           const oldNumDocInPage = await getOldNumDocInPage(scopus_id);
           const numArticleInDB = await getNumArticleInDB(scopus_id);
 
-          console.log("numArticleInDB =", numArticleInDB);
-          console.log("oldNumDocInPage =", oldNumDocInPage);
-          console.log("numDocinPage =", numDocInPage);
-
+          let article_data;
           if (numArticleInDB === 0) {
-            console.log("-------------------------");
+            console.log("\n-------------------------");
             console.log("Do this loop First Scrap");
             console.log("-------------------------");
+            console.log("numArticleInDB =", numArticleInDB);
+            console.log("oldNumDocInPage =", oldNumDocInPage,"\n");
+            console.log("numDocinPage =", numDocInPage);
             const article = await scrapeArticleData(url.url, page, 0, url.name);
             console.log(
               "\nNumber of WU Articles of ",
@@ -76,13 +86,18 @@ const scraperArticleScopus = async () => {
               article.article.length,
               "\n"
             );
-            allArticle.push(article.article);
-            return { status: "fulfilled", article: article.article };
+
+            article_data = article.article;
+            allArticle.push(article_data);
+
+            return { status: "fulfilled", article: article_data };
           } else if (numDocInPage !== oldNumDocInPage) {
             checkUpdate = true;
-            console.log("---------------------------------------");
+            console.log("\n---------------------------------------");
             console.log("Do this loop Scrap Add New Article");
             console.log("---------------------------------------");
+            console.log("numArticleInDB =", numArticleInDB);
+            console.log("oldNumDocInPage =", oldNumDocInPage,"\n");
             const numNewDoc = numDocInPage - oldNumDocInPage;
             const article = await scrapeArticleData(
               url.url,
@@ -97,19 +112,23 @@ const scraperArticleScopus = async () => {
               article.article.length,
               "\n"
             );
-            allArticle.push(article.article);
+            article_data = article.article;
+            allArticle.push(article_data);
+
             return {
               status: "fulfilled",
-              article: article.article,
+              article: article_data,
               scopus_id: scopus_id,
               checkUpdate: checkUpdate,
               numDocInPage: numDocInPage,
             };
           } else if (numDocInPage === oldNumDocInPage) {
             checkNotUpdate = true;
-            console.log("-------------");
+            console.log("\n-------------");
             console.log("Skip Loop");
             console.log("-------------");
+            console.log("numArticleInDB =", numArticleInDB);
+            console.log("oldNumDocInPage =", oldNumDocInPage,"\n");
             return {
               status: "fulfilled",
               article: [],
@@ -128,9 +147,10 @@ const scraperArticleScopus = async () => {
 
       const results = await Promise.allSettled(batchPromises);
       const mappedResults = results.map(
-        (result) => result.value.article !== null && result.value.status !== 'rejected'
+        (result) =>
+          result.value.article !== null && result.value.status !== "rejected"
       );
-      console.log("mappedResults = ",mappedResults)
+      console.log("mappedResults = ", mappedResults);
       const hasFalse = mappedResults.includes(false);
       const finalResult = !hasFalse;
 
@@ -138,7 +158,10 @@ const scraperArticleScopus = async () => {
         (result) => result.status === "rejected"
       );
       if (finalResult) {
-        if (results.length === batchSize ||results.length === batchURLs.length) {
+        if (
+          results.length === batchSize ||
+          results.length === batchURLs.length
+        ) {
           for (const result of results) {
             if (result.status === "fulfilled") {
               const data = result.value;
@@ -173,12 +196,11 @@ const scraperArticleScopus = async () => {
       }
       roundScraping += batchSize;
     }
-    console.log("\nStart Scraping Journal\n");
-    if(sourceID.length > 0){
-      console.log("sourceID = ",sourceID)
-      await scrapJournal(sourceID);
-    }
-    
+    // console.log("\nStart Scraping Journal\n");
+    // if(sourceID.length > 0){
+    //   console.log("sourceID = ",sourceID)
+    //   await scrapJournal(sourceID);
+    // }
 
     console.log("Finish Scraping Scopus");
     return allArticle;
@@ -211,10 +233,8 @@ const scraperOneArticleScopus = async (eid) => {
         const articlePage = await page.browser().newPage();
         const url = `https://www.scopus.com/record/display.uri?eid=2-s2.0-${id}&origin=resultslist&sort=plf-f`;
         await articlePage.goto(url, { waitUntil: "networkidle2" });
-        await articlePage.waitForSelector(
-          "#affiliation-section > div > div > ul"
-        );
-        await articlePage.waitForTimeout(2000);
+        const waitElement = "#affiliation-section > div > div > ul > li > span";
+        await waitForElement(waitElement);
         const check = await checkArticleWU(articlePage);
 
         if (check === "true") {
@@ -266,7 +286,6 @@ const checkArticleWU = async (page) => {
     let $ = cheerio.load(html);
     if ($("#show-additional-affiliations").length > 0) {
       await page.click("#show-additional-affiliations");
-      await page.waitForTimeout(1300);
       html = await page.content();
       $ = cheerio.load(html);
       affiliationText = $("#affiliation-section > div").text();
@@ -294,17 +313,27 @@ const scrapeArticleData = async (url, page, numNewDoc, author_name) => {
     await page.click("#preprints");
     await page.waitForSelector("#documents");
     await page.click("#documents");
+    let html;
+    const waitElement1 =
+    "#documents-panel > div > div.Columns-module__FxWfo > div:nth-child(2) > div > els-results-layout > div:nth-child(2) > ul > li:nth-child(1) > div > div.col-lg-21.col-md-18.col-xs-18 > div.list-title.margin-size-24-t.margin-size-0-b.text-width-32 > h4 > a > span > span";
+    if (numNewDoc > 0) {
+      const waitElement2 =
+        "#documents-panel > div > div.Columns-module__FxWfo > div:nth-child(2) > div > els-results-layout > div > div > div > label > select";
+      await waitForElement(waitElement2);
+      await page.select(
+        "#documents-panel > div > div.Columns-module__FxWfo > div:nth-child(2) > div > els-results-layout > div > div > div > label > select",
+        "200"
+      );
+     
+      await waitForElement(waitElement1);
+      html = await page.content();
 
-    await page.waitForSelector(
-      "#documents-panel > div > div.Columns-module__FxWfo > div:nth-child(2) > div > els-results-layout > div > div > div > label > select"
-    );
-    await page.select(
-      "#documents-panel > div > div.Columns-module__FxWfo > div:nth-child(2) > div > els-results-layout > div > div > div > label > select",
-      "200"
-    );
-    await page.waitForTimeout(2500);
-    let html = await page.content();
-    let link_Article = await getArticleUrl(html);
+    }else{
+      await waitForElement(waitElement1);
+      html = await page.content();
+    }
+
+    let link_Article = await getArticleUrl(html, numNewDoc);
 
     if (link_Article.length == 0) {
       console.log("Catch 1111 **");
@@ -330,11 +359,9 @@ const scrapeArticleData = async (url, page, numNewDoc, author_name) => {
           console.log("Article =", articleCount);
           const articlePage = await page.browser().newPage();
           await articlePage.goto(article_url, { waitUntil: "networkidle2" });
-          await page.waitForTimeout(5000);
-          await articlePage.waitForSelector(
-            "#affiliation-section > div > div > ul"
-          );
-          await page.waitForTimeout(5000);
+
+          const waitElement = "#affiliation-section > div > div > ul > li > span";
+          await waitForElement(waitElement);
           const check = await checkArticleWU(articlePage);
 
           if (check == "false") {
@@ -369,7 +396,8 @@ const scrapeArticleData = async (url, page, numNewDoc, author_name) => {
     }
   } catch (error) {
     console.error("\nError occurred while scraping\n");
-    return null;
+    console.error("---- Article Error ----");
+    return { article: null, link_not_wu: null };
   }
 };
 
@@ -384,23 +412,27 @@ const getScopusID = async (url) => {
   }
 };
 
-const getArticleUrl = async (html) => {
+const getArticleUrl = async (html, numNewDoc) => {
   try {
     const $ = cheerio.load(html);
     const selector =
       "div.Columns-module__FxWfo > div:nth-child(2) > div > els-results-layout > div:nth-child(2) > ul > li";
     const content = $(selector);
-    const url_data = [];
-    content.each(function () {
+
+    let slicedContent = numNewDoc > 0 ? content.slice(0, numNewDoc) : content;
+    
+    const url_data = slicedContent.map(function () {
       const link = $(this).find("h4 > a").attr("href");
-      url_data.push(link);
-    });
+      return link;
+    }).get();
+
     return url_data;
   } catch (error) {
-    console.error("\nError occurred while scraping\n");
+    console.error("Error occurred while scraping:", error);
     return null;
   }
 };
+
 
 const getE_Id = async (url) => {
   try {
@@ -426,7 +458,7 @@ const getArticleDetail = async (page, url, author_url) => {
     } else {
       author_scopus_id = await getScopusID(author_url);
     }
-    // await page.waitForSelector("#show-additional-source-info");
+    await page.waitForSelector("#show-additional-source-info");
     await page.click("#show-additional-source-info");
     await page.waitForTimeout(1200);
     const html = await page.content();
@@ -494,7 +526,9 @@ const getSourceID = async (page, author_scopus_id) => {
         if (checkUpdate) {
           // update
           if (!(await checkHasSourceId(source_id))) {
-            console.error("\n ---- Add New Journal ---- \n");
+            console.error("\n-------------------------");
+            console.error("---- Add New Journal ----");
+            console.error("-------------------------\n");
             const data = await scraperJournalData(source_id, 0);
             await insertDataToJournal(data, source_id);
           }
@@ -564,4 +598,6 @@ module.exports = {
   errorURLs,
   getArticleUrl,
   scraperOneArticleScopus,
+  scrapeArticleData,
+  getArticleDetail,
 };

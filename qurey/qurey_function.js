@@ -2,6 +2,7 @@ const AuthorScopus = require("../models/AuthorScopus");
 const ArticleScopus = require("../models/ArticleScopus");
 const Journal = require("../models/journal");
 const connectToMongoDB = require("./connectToMongoDB");
+const { MongoClient } = require("mongodb");
 (async () => {
 
   await connectToMongoDB();
@@ -35,21 +36,6 @@ const getOldNumDocInPage = async (scopus_id) => {
   }
 };
 
-// const getOldNumDocInPage = async (scopus_id) => {
-//   try {
-//     const authors = await AuthorScopus.find({ author_scopus_id: scopus_id });
-//     if (authors.length > 0) {
-//       return Number(authors[0].documents);
-//     } else {
-//       return 0;
-//     }
-//   } catch (error) {
-//     console.error("An error occurred:", error);
-//     return 0;
-//   }
-// };
-
-
 const checkHasSourceId = async (source_id) => {
   try {
     const journals = await Journal.find({ source_id: source_id });
@@ -74,7 +60,7 @@ const updateNewDoc = async (scopus_id, numDocInPage) => {
         }
       }
     );
-    console.log('Num Document updated successfully!');
+    // console.log('Num Document updated successfully!');
   } catch (error) {
     console.error('Error updating document:', error);
   }
@@ -143,6 +129,16 @@ const getCountRecordInJournal = async () => {
   }
 };
 
+const getCountRecordInArticle = async () => {
+  try {
+    const article = await ArticleScopus.countDocuments();
+    return article ;
+  } catch (error) {
+
+    throw error;
+  }
+};
+
 const getCountRecordInAuthor = async () => {
   try {
     const num = await AuthorScopus.countDocuments();
@@ -154,6 +150,22 @@ const getCountRecordInAuthor = async () => {
    
   } catch (error) {
     return 0    
+  }
+};
+
+const getAllSourceIdOfArticle = async () => {
+  try {
+    const pipeline = [
+      { $match: { source_id: { $ne: null } } }, 
+      { $group: { _id: "$source_id", source_id: { $first: "$source_id" } } },
+      { $project: { _id: 0, source_id: 1 } },
+    ];
+
+    const result = await ArticleScopus.aggregate(pipeline);
+    const uniqueSourceIds = result.map((item) => item.source_id);
+    return uniqueSourceIds;
+  } catch (err) {
+    console.error("Error occurred while fetching source IDs:", err);
   }
 };
 
@@ -177,6 +189,21 @@ const getAllSourceIDJournal = async () => {
   }
 };
 
+const getCiteSourceYearLastestInDb = async (sourceId) => {
+  try {
+    const document = await Journal.findOne({ source_id: sourceId });
+
+    if (document && document.cite_source && document.cite_source.length > 0) {
+      const firstCiteSourceYear = document.cite_source[0].year;
+      return firstCiteSourceYear
+    } else {
+      return null
+    }
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
 module.exports = {
   getNumArticleInDB,
   getOldNumDocInPage,
@@ -187,5 +214,8 @@ module.exports = {
   getAllSourceIDJournal,
   getCountRecordInJournal,
   getCountRecordInAuthor,
-  getOldAuthorData
+  getOldAuthorData,
+  getCountRecordInArticle,
+  getAllSourceIdOfArticle,
+  getCiteSourceYearLastestInDb
 };

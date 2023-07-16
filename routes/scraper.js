@@ -13,10 +13,12 @@ const {
 } = require("../scraper/scopus/fuction_author");
 const {
   scraperOneArticleScopus,
+  scrapeArticleData
 } = require("../scraper/scopus/function_article");
 const { scrapOneJournal } = require("../scraper/scopus/function_journal");
-const { getCountRecordInJournal } = require("../qurey/qurey_function");
+const { getOldAuthorData,getCountRecordInArticle  } = require("../qurey/qurey_function");
 const CronJob = require("cron").CronJob;
+const puppeteer = require("puppeteer");
 
 const {
   scraperArticleScopus,
@@ -26,22 +28,58 @@ const {
 const { scrapJournal } = require("../scraper/scopus/function_journal");
 process.setMaxListeners(100);
 
+(async () => {
+
+  await getOldAuthorData();
+
+})();
+
+
+// router.get("/scraper-scopus-cron", async (req, res) => {
+//   try {
+    
+//     if(await getCountRecordInArticle() === 0){
+//       await axios.get("http://localhost:8001/scraper/scopus-article");
+//       axios.get("http://localhost:8002/scraper/scopus-journal");
+//     }else{
+//       axios.get("http://localhost:8001/scraper/scopus-article");
+//       axios.get("http://localhost:8002/scraper/scopus-journal");
+//     }
+    
+
+//   } catch (error) {
+//     console.error("Cron job error:", error);
+//   }
+// });
+
 router.get("/scraper-scopus-cron", async (req, res) => {
   try {
-    axios.get("http://localhost:8000/scraper/scopus-author");
-    axios.get("http://localhost:8001/scraper/scopus-article");
-    if ((await getCountRecordInJournal()) > 0) {
-      axios.get("http://localhost:8002/scraper/scopus-journal");
+    const articleCount = await getCountRecordInArticle();
+    let journalRequest
+    const authorRequest = axios.get("http://localhost:8000/scraper/scopus-author");
+    const articleRequest = axios.get("http://localhost:8001/scraper/scopus-article");
+    if(articleCount !== 0){
+      journalRequest = axios.get("http://localhost:8002/scraper/scopus-journal")
     }
-    // res.status(200).json({
-    //   message: "Successful scraping",
-    // });
+  
+    if (articleCount === 0) {
+      await Promise.all([authorRequest, articleRequest]);
+      await axios.get("http://localhost:8002/scraper/scopus-journal");
+    } else {
+      console.log("เข้า")
+      await Promise.all([authorRequest, articleRequest,journalRequest]);
+    }
 
+    res.status(200).json({
+      message: "Scraping Data For Scopus Completed Successfully.",
+    });
   } catch (error) {
     console.error("Cron job error:", error);
+    res.status(500).json({
+      error: "Internal server error.",
+    });
   }
 });
-
 router.get("/scholar", async (req, res) => {
   try {
     const authorURL = await getURLScholar();
@@ -189,8 +227,6 @@ router.get("/scraper-author-scopus", async (req, res) => {
 router.get("/scraper-article-scopus", async (req, res) => {
   try {
     const eid = req.query.eid;
-    // console.log("scopus_id =", eid);
-
     console.log("\nStart Scraping Article Scopus\n");
     const article = await scraperOneArticleScopus(eid);
     console.log("\nFinish Scraping Article Scopus\n");
@@ -205,6 +241,33 @@ router.get("/scraper-article-scopus", async (req, res) => {
     });
   }
 });
+//url, page, numNewDoc, author_name
+router.get("/scraper-articleOfauthor-scopus", async (req, res) => {
+  try {
+    const scopus_id = req.query.scopus_id;
+    console.log("scopus_id  =", scopus_id);
+    console.log("\nStart Scraping Article Scholar\n");
+
+    const url = `https://www.scopus.com/authid/detail.uri?authorId=${scopus_id}`
+    const browser = await puppeteer.launch({ headless: "new" });
+    const page = await browser.newPage();
+    await page.goto(url, { waitUntil: "networkidle2" });
+    const article = await scrapeArticleData(url,page,0,scopus_id);
+    await browser.close();
+    
+    console.log("\nFinish Scraping Article Scholar\n");
+
+    res.status(200).json({
+      AuthorScholarData: article.article,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Unable to extract Authors data from scopus",
+    });
+  }
+});
+
 
 router.get("/scraper-journal-scopus", async (req, res) => {
   try {

@@ -51,9 +51,14 @@ const scraperAuthorScopus = async () => {
             if (result.status === "fulfilled") {
               const data = result.value.author;
               if (countRecordInAuthor > 0) {
+                console.log("\n-----------------")
                 console.log("Update Author")
+                console.log("-----------------")
                 await updateDataToAuthor(data);
               } else {
+                console.log("\n------------------")
+                console.log("First Scraping Author")
+                console.log("------------------")
                 await insertAuthorDataToDbScopus(data, data.name);
               }
             } else if (result.status === "rejected") {

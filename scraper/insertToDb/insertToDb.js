@@ -133,7 +133,7 @@ const insertDataToJournal = async (data,source_id) => {
         });
 
         await newJournal.save();
-        console.log("Journal Data | Source ID:", source_id, "saved successfully to MongoDB.");
+        console.log("Journal Data | Source ID:", source_id, "saved successfully to MongoDB.\n");
     } catch (error) {
         console.error('Error saving data to MongoDB:', error);
     }
@@ -168,7 +168,7 @@ const updateDataToJournal = async (data, source_id) => {
     oldData.cite_source.sort((a, b) => b.year - a.year);
     await oldData.save();
 
-    console.log("Journal Data | Source ID:", source_id, "updeted successfully to MongoDB.");
+    console.log("Journal Data | Source ID:", source_id, "updeted successfully to MongoDB.\n");
     return oldData;
   } catch (error) {
     console.error("An error occurred:", error);
@@ -194,7 +194,7 @@ const updateDataToAuthor = async (data) => {
          }
       }
    )
-   console.log("Author Data | Source ID:",  data.author_scopus_id, "updeted successfully to MongoDB.");   
+   console.log("Author Data | Source ID:",  data.author_scopus_id, "updeted successfully to MongoDB.\n");   
   } catch (error) {
     // console.error("An error occurred:", error);
   }

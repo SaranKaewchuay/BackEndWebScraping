@@ -16,8 +16,7 @@ const getOldAuthorData = async () => {
     const authors = await AuthorScopus.find();
     oldAuthorData.push(authors);
   } catch (error) {
-    // Handle the error here
-    // console.error('Error occurred while fetching old author data:', error);
+
   }
 };
 

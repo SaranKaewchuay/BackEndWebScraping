@@ -14,7 +14,7 @@ const waitForElement = async (selector, maxAttempts = 10, delay = 200) => {
   let attempts = 0;
   while (attempts < maxAttempts) {
     try {
-      await page.waitForSelector(selector, { timeout: 100 });
+      await page.waitForSelector(selector, { timeout: 1600 });
       break; 
     } catch (error) {
       attempts++;
@@ -31,6 +31,7 @@ const scrapJournal = async () => {
 
     if(await getCountRecordInJournal() === 0){
         journalData = await getAllSourceIdOfArticle()
+        console.log("Length_SourceID : ",journalData.length)
         console.log("journalData = ",journalData)
     }else{
         hasSource = true;
@@ -53,8 +54,10 @@ const scrapJournal = async () => {
           console.log(currentIndex, "/", journalData.length, "| Source ID:", journalItem);
           const link = `https://www.scopus.com/sourceid/${journalItem}`;
           await page.goto(link, { waitUntil: "networkidle2" });
-          // await page.waitForTimeout(1600)
-          await waitForElement("#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > section > div > div:nth-child(2) > div > div > div:nth-child(1) > span.Typography-module__lVnit.Typography-module__ix7bs.Typography-module__Nfgvc")
+          await page.waitForTimeout(1600)
+          await waitForElement("#csCalculation > div:nth-child(2) > div:nth-child(2) > div > span.fupValue > a > span")
+          await waitForElement("#CSCategoryTBody > tr:nth-child(1) > td:nth-child(1) > div.treeLineContainer > span")
+
           const sourceIDs = await getSourceID(journalItem);
           let yearLastestInDb = 0;
           let yearLastestInWebPage = 0
@@ -77,7 +80,7 @@ const scrapJournal = async () => {
             console.log("------------------------------");
             console.log("yearLastestInWebPage = ", yearLastestInWebPage);
             console.log("yearLastestInDb = ", yearLastestInDb,"\n");
-            const data = await scraperJournalData(journalItem, numNewJournal);
+            const data = await scraperJournalData(journalItem, numNewJournal, page);
             return { status: "fulfilled", value: data, source_id: journalItem };
           } else if (yearLastestInWebPage > yearLastestInDb) {
             checkUpdate = true;
@@ -177,6 +180,8 @@ const scrapOneJournal = async (source_id) => {
     const journal_data = [];
     const journal_All = source_id.split(",").map(e => e.trim());
 
+    
+
     let sizeLoop =
       journal_All.length < batchSize && journal_All.length > 0
         ? journal_All.length
@@ -196,7 +201,13 @@ const scrapOneJournal = async (source_id) => {
         );
 
         try {
-          const data = await scraperJournalData(journalItem, 0);
+          const browser = await puppeteer.launch({ headless: "new" });
+          let page = await browser.newPage();
+          const link = `https://www.scopus.com/sourceid/${journalItem}`;
+          await page.goto(link, { waitUntil: "networkidle2" });
+          // await page.waitForTimeout(1600)
+          await waitForElement("#csCalculation > div:nth-child(2) > div:nth-child(2) > div > span.fupValue > a > span")
+          const data = await scraperJournalData(journalItem, 0, page);
           console.log("Finish Scraping Journal ID: ", journalItem);
           return { status: "fulfilled", value: data };
         } catch (error) {
@@ -226,16 +237,16 @@ const scrapOneJournal = async (source_id) => {
 
 
 //scrapJournalDetail()
-const scraperJournalData = async (source_id, numNewJournal) => {
-  try {
-    const browser = await puppeteer.launch({ headless: "new" });
-    const page = await browser.newPage();
-    const link = `https://www.scopus.com/sourceid/${source_id}`;
-    await page.goto(link, { waitUntil: "networkidle2" });
-    await page.waitForSelector(
-      "#jourlSection > div.col-md-9.col-xs-9.noPadding > div"
-    );
-    const html = await page.content();
+const scraperJournalData = async (source_id, numNewJournal, page) => {
+  try {    
+    let html = await page.content();
+
+    const buttonElement = await page.$('#csSubjContainer > button');
+    if (buttonElement) {
+      await page.click("#csSubjContainer > button")
+      await page.waitForTimeout(1300)
+      html = await page.content();
+    }
     const $ = cheerio.load(html);
 
     const journal = {
@@ -285,11 +296,9 @@ const scraperJournalData = async (source_id, numNewJournal) => {
 
     journal.cite_source = await processDropdowns(page, numNewJournal);
 
-    await browser.close();
-
     return journal;
   } catch (error) {
-    console.error("\nError occurred while scraping\n");
+    console.error("\nError occurred while scraping 11111\n : ",error);
     return null;
   }
 };
@@ -323,6 +332,7 @@ const processDropdowns = async (page, numNewJournal) => {
     }
     for (let index = 0; index < loopDropDown; index++) {
       const option = dropDownOptions[index];
+      await page.waitForSelector("#year")
       await page.click(
         "#year-button > span.ui-selectmenu-icon.ui-icon.btn-primary.btn-icon.ico-navigate-down.flexDisplay.flexAlignCenter.flexJustifyCenter.flexColumn"
       );
@@ -337,6 +347,12 @@ const processDropdowns = async (page, numNewJournal) => {
       const data = { year, citation, category };
       dataCitation.push(data);
     }
+
+    if(dataCitation.length === 0){
+      console.log("DropDown === 0")
+      await processDropdowns(page, numNewJournal)
+    }
+
   } else if (await page.$("#rpResult")) {
     const html = await page.content();
     const $ = cheerio.load(html);
@@ -349,6 +365,7 @@ const processDropdowns = async (page, numNewJournal) => {
     const data = { year, citation, category };
     dataCitation.push(data);
   }
+
   return dataCitation.length > 0 ? dataCitation : null;
 };
 

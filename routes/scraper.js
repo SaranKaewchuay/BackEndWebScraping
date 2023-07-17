@@ -34,26 +34,9 @@ process.setMaxListeners(100);
 
 })();
 
-
-// router.get("/scraper-scopus-cron", async (req, res) => {
-//   try {
-    
-//     if(await getCountRecordInArticle() === 0){
-//       await axios.get("http://localhost:8001/scraper/scopus-article");
-//       axios.get("http://localhost:8002/scraper/scopus-journal");
-//     }else{
-//       axios.get("http://localhost:8001/scraper/scopus-article");
-//       axios.get("http://localhost:8002/scraper/scopus-journal");
-//     }
-    
-
-//   } catch (error) {
-//     console.error("Cron job error:", error);
-//   }
-// });
-
 router.get("/scraper-scopus-cron", async (req, res) => {
   try {
+    // await getOldAuthorData();
     const articleCount = await getCountRecordInArticle();
     let journalRequest
     const authorRequest = axios.get("http://localhost:8000/scraper/scopus-author");
@@ -64,9 +47,15 @@ router.get("/scraper-scopus-cron", async (req, res) => {
   
     if (articleCount === 0) {
       await Promise.all([authorRequest, articleRequest]);
-      await axios.get("http://localhost:8002/scraper/scopus-journal");
+      setTimeout(async () => {
+        try {
+          const response = await axios.get("http://localhost:8002/scraper/scopus-journal");
+        } catch (error) {
+          console.error("Error fetching data:", error.message);
+        }
+      }, 2000);
+     
     } else {
-      console.log("เข้า")
       await Promise.all([authorRequest, articleRequest,journalRequest]);
     }
 
@@ -246,7 +235,7 @@ router.get("/scraper-articleOfauthor-scopus", async (req, res) => {
   try {
     const scopus_id = req.query.scopus_id;
     console.log("scopus_id  =", scopus_id);
-    console.log("\nStart Scraping Article Scholar\n");
+    console.log("\nStart Scraping Article Scopus\n");
 
     const url = `https://www.scopus.com/authid/detail.uri?authorId=${scopus_id}`
     const browser = await puppeteer.launch({ headless: "new" });
@@ -255,7 +244,7 @@ router.get("/scraper-articleOfauthor-scopus", async (req, res) => {
     const article = await scrapeArticleData(url,page,0,scopus_id);
     await browser.close();
     
-    console.log("\nFinish Scraping Article Scholar\n");
+    console.log("\nFinish Scraping Article Scopus\n");
 
     res.status(200).json({
       AuthorScholarData: article.article,

@@ -4,7 +4,7 @@ const cheerio = require("cheerio");
 const { insertAuthorDataToDbScopus, updateDataToAuthor  } = require("../insertToDb/insertToDb");
 const { getCountRecordInAuthor } = require("../../qurey/qurey_function");
 const batchSize = 3; 
-let roundScraping = 0;
+let roundScraping = 11;
 let allAuthors = [];
 
 
@@ -15,7 +15,7 @@ const scraperAuthorScopus = async () => {
     console.log("countRecordInAuthor =", countRecordInAuthor);
     const allURLs = await getURLScopus();
     //allURLs.length
-    for (let i = roundScraping; i < 3; i += batchSize) {
+    for (let i = roundScraping; i < 16; i += batchSize) {
       const batchURLs = allURLs.slice(i, i + batchSize);
 
       roundScraping = i;

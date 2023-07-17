@@ -1,10 +1,10 @@
 const puppeteer = require("puppeteer");
 const cheerio = require("cheerio");
 const axios = require("axios");
-const { insertDataToDbScholar } = require("../insertToDb/insertToDb");
+const { insertDataToDbScholar,updateDataToDbScholar } = require("../insertToDb/insertToDb");
 const userAgent = require("user-agents");
-
-process.setMaxListeners(100);
+const {   getCountAuthorScholar, getCountArticleScholar } = require("../../qurey/qurey_function");
+// process.setMaxListeners(100);
 let numArticle = null;
 let linkError = [];
 let url_not = [];
@@ -130,6 +130,7 @@ const getAuthorAllDetail = async (authorObject, number_author, length) => {
     const browser = await puppeteer.launch({ headless: "new" });
     const page = await browser.newPage();
     await page.setUserAgent(userAgent.random().toString());
+    const scholar_id = await getUserScholarId(authorObject.url)
 
     let url_checked = await check_url(authorObject);
     let authorAllDetail;
@@ -163,7 +164,7 @@ const getAuthorAllDetail = async (authorObject, number_author, length) => {
 
         const batch_promises = batch.map(async (article_sub_data) => {
           const detail_page_url = article_sub_data.url;
-          return fetchArticleDetail(browser, detail_page_url);
+          return fetchArticleDetail(browser, detail_page_url,scholar_id);
         });
 
         article_detail_promises.push(...batch_promises);
@@ -173,7 +174,12 @@ const getAuthorAllDetail = async (authorObject, number_author, length) => {
       authorAllDetail.articles = await Promise.all(article_detail_promises);
 
       if (authorAllDetail) {
-        insertDataToDbScholar(authorAllDetail);
+        if(await getCountAuthorScholar() === 0 && getCountArticleScholar() === 0){
+          insertDataToDbScholar(authorAllDetail);
+        }else{
+          updateDataToDbScholar(authorAllDetail);
+        }
+         
       }
 
       console.log("");
@@ -303,7 +309,7 @@ const getArticleScholar = async (scholar_id) => {
 
         const batch_promises = batch.map(async (article_sub_data) => {
           const detail_page_url = article_sub_data.url;
-          return fetchArticleDetail(browser, detail_page_url);
+          return fetchArticleDetail(browser, detail_page_url,scholar_id);
         });
 
         article_detail_promises.push(...batch_promises);
@@ -356,7 +362,8 @@ const scrapeAdditionalData = async (page) => {
   }
 };
 
-const fetchArticleDetail = async (browser, detail_page_url) => {
+
+const fetchArticleDetail = async (browser, detail_page_url,scholar_id) => {
   try {
     const page = await browser.newPage();
     await page.setUserAgent(userAgent.random().toString());
@@ -365,7 +372,8 @@ const fetchArticleDetail = async (browser, detail_page_url) => {
     const detail_page_html = await page.content();
     const article_data = await getArticleDetail(
       detail_page_html,
-      detail_page_url
+      detail_page_url,
+      scholar_id
     );
     await page.close();
     return article_data;
@@ -568,8 +576,10 @@ const getCitation = async (url) => {
 
 const getAuthorDetail = async (html, url) => {
   try {
+    const scholar_id = await getUserScholarId(url)
     const $ = cheerio.load(html);
     const author_detail = {
+      scholar_id : scholar_id,
       author_name: $("#gsc_prf_in").text(),
       department: $("#gsc_prf_i > div:nth-child(2)").text(),
       subject_area: await getSubjectArea(html),
@@ -604,15 +614,26 @@ const getSubjectArea = async (html) => {
     return null;
   }
 };
+const getArticleId = async(urlString) => {
+  const regex = /citation_for_view=.*?:([^&]+)/;
+  const match = urlString.match(regex);
 
-const getArticleDetail = async (html, url) => {
+  if (match && match[1]) {
+    const desiredString = match[1];
+    return desiredString
+  } else {
+    console.log("Desired string not found.");
+}
+}
+
+const getArticleDetail = async (html, url,scholar_id) => {
   try {
     const $ = cheerio.load(html);
     const content = $("#gsc_oci_table > div.gs_scl");
 
     const field = [];
     let article_data = {};
-    // article_data.article_id = numArticle;
+    article_data.article_id = await getArticleId(url)
     article_data.article_name = $("#gsc_oci_title").text();
 
     content.map(async function (i) {
@@ -651,6 +672,7 @@ const getArticleDetail = async (html, url) => {
       }
     });
 
+    article_data.scholar_id = scholar_id;
     article_data.url = url;
 
     return article_data;

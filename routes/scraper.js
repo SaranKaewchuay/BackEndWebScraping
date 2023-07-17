@@ -77,7 +77,8 @@ router.get("/scholar", async (req, res) => {
     console.log("\nStart Scraping Researcher Data From Google Scholar\n");
     const batchSize = 5;
     //214 284 585
-    for (let i = 0; i < authorURL.length; i += batchSize) {
+    // authorURL.length
+    for (let i = 0; i < 20; i += batchSize) {
       const batchAuthors = authorURL.slice(i, i + batchSize);
       const scrapingPromises = batchAuthors.map((author, index) => {
         const number_author = i + index + 1;

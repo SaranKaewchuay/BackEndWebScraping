@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 
 const ArticleSchema = new mongoose.Schema({
+    article_id : String,
     article_name: String,
     authors: Array,
     publication_date: String,
@@ -13,6 +14,7 @@ const ArticleSchema = new mongoose.Schema({
     publisher: String,
     description: String,
     total_citations:String,
+    scholar_id : String,
     url: String,
     author_id: {
         type: mongoose.Schema.Types.ObjectId,

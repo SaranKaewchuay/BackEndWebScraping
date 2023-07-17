@@ -7,52 +7,235 @@ const Journal = require('../../models/journal.js');
 const { ObjectId } = require('mongodb');
 process.setMaxListeners(100);
 
+
+// Function to insert new data
 const insertDataToDbScholar = async (data) => {
-    try {
-        const objectId = new ObjectId();
-    
-        const newAuthor = new Author({
-          _id: objectId,
-          author_name: data.author_name,
-          department: data.department,
-          subject_area: data.subject_area,
-          image: data.image,
-          citation_by: {
-            table: data.citation_by.table,
-            graph: data.citation_by.graph,
-          },
-        });
-    
-        if (data.articles) {
+  try {
+    const objectId = new ObjectId();
+
+    const newAuthor = new Author({
+      _id: objectId,
+      scholar_id: data.scholar_id,
+      author_name: data.author_name,
+      department: data.department,
+      subject_area: data.subject_area,
+      image: data.image,
+      citation_by: {
+        table: data.citation_by.table,
+        graph: data.citation_by.graph,
+      },
+    });
+
+    await newAuthor.save();
+
+    if (data.articles) {
+      await Promise.all(
+        data.articles.map(async (article) => {
+          if (article) {
+            const newArticle = new Article({
+              article_id: article.article_id,
+              article_name: article.article_name,
+              authors: article.authors,
+              publication_date: article.publication_date,
+              conference: article.conference,
+              institution: article.institution,
+              journal: article.journal,
+              volume: article.volume,
+              issue: article.issue,
+              pages: article.pages,
+              publisher: article.publisher,
+              description: article.description,
+              total_citations: article.total_citations,
+              scholar_id: article.scholar_id,
+              url: article.url,
+              author_id: objectId,
+            });
+            await newArticle.save();
+          }
+        })
+      );
+    }
+  } catch (error) {
+    console.error("Error inserting data:", error);
+    throw error;
+  }
+};
+
+// Function to update existing data
+const updateDataToDbScholar = async (data) => {
+  try {
+    const existingAuthor = await Author.findOne({ scholar_id: data.scholar_id });
+
+    if (existingAuthor) {
+      existingAuthor.author_name = data.author_name;
+      existingAuthor.department = data.department;
+      existingAuthor.subject_area = data.subject_area;
+      existingAuthor.image = data.image;
+      existingAuthor.citation_by.table = data.citation_by.table;
+      existingAuthor.citation_by.graph = data.citation_by.graph;
+
+      await existingAuthor.save();
+
+      if (data.articles) {
+        await Promise.all(
           data.articles.map(async (article) => {
             if (article) {
-              const newArticle = new Article({
-                article_name: article.article_name,
-                authors: article.authors,
-                publication_date: article.publication_date,
-                conference: article.conference,
-                institution: article.institution,
-                journal: article.journal,
-                volume: article.volume,
-                issue: article.issue,
-                pages: article.pages,
-                publisher: article.publisher,
-                description: article.description,
-                total_citations: article.total_citations,
-                url: article.url,
-                author_id: objectId,
-              });
-              return await newArticle.save();
+              await Article.findOneAndUpdate(
+                { article_id: article.article_id },
+                {
+                  article_name: article.article_name,
+                  authors: article.authors,
+                  publication_date: article.publication_date,
+                  conference: article.conference,
+                  institution: article.institution,
+                  journal: article.journal,
+                  volume: article.volume,
+                  issue: article.issue,
+                  pages: article.pages,
+                  publisher: article.publisher,
+                  description: article.description,
+                  total_citations: article.total_citations,
+                  url: article.url,
+                  author_id: existingAuthor._id,
+                },
+                { upsert: true } // This option creates a new document if it doesn't exist
+              );
             }
-          });
-        }
-    
-        return await newAuthor.save();
-      } catch (error) {
-        console.error("Error inserting data:", error);
-        throw error;
+          })
+        );
       }
+    } else {
+      // If author doesn't exist, insert new data
+      await insertDataToDbScholar(data);
+    }
+  } catch (error) {
+    console.error("Error updating data:", error);
+    throw error;
+  }
 };
+
+
+
+// const insertDataToDbScholar = async (data) => {
+//   try {
+//     const objectId = new ObjectId();
+
+//     const existingAuthor = await Author.findOne({ scholar_id: data.scholar_id });
+
+//     if (existingAuthor) {
+//       console.log("Update")
+//       // Update existing entry
+//       existingAuthor.author_name = data.author_name;
+//       existingAuthor.department = data.department;
+//       existingAuthor.subject_area = data.subject_area;
+//       existingAuthor.image = data.image;
+//       existingAuthor.citation_by.table = data.citation_by.table;
+//       existingAuthor.citation_by.graph = data.citation_by.graph;
+
+//       await existingAuthor.save();
+//       console.log("---------- Update Author Scholar Success ----------")
+
+//       // Update articles if any
+//       if (data.articles) {
+//         console.log("Update")
+//         await Promise.all(
+//           data.articles.map(async (article) => {
+//             if (article) {
+//               const existingArticle = await Article.findOne({ scholar_id: article.scholar_id });
+//               if (existingArticle) {
+//                 // Update existing article
+//                 existingArticle.article_name = article.article_name;
+//                 existingArticle.authors = article.authors;
+//                 existingArticle.publication_date = article.publication_date;
+//                 existingArticle.conference = article.conference;
+//                 existingArticle.institution = article.institution;
+//                 existingArticle.journal = article.journal;
+//                 existingArticle.volume = article.volume;
+//                 existingArticle.issue = article.issue;
+//                 existingArticle.pages = article.pages;
+//                 existingArticle.publisher = article.publisher;
+//                 existingArticle.description = article.description;
+//                 existingArticle.total_citations = article.total_citations;
+//                 existingArticle.url = article.url;
+//                 existingArticle.author_id = existingArticle.author_id;
+//                 await existingArticle.save();
+//                 console.log("---------- Update Article Scholar Success ----------")
+//               } else {
+//                 // Create new article
+//                 const newArticle = new Article({
+//                   article_name: article.article_name,
+//                   authors: article.authors,
+//                   publication_date: article.publication_date,
+//                   conference: article.conference,
+//                   institution: article.institution,
+//                   journal: article.journal,
+//                   volume: article.volume,
+//                   issue: article.issue,
+//                   pages: article.pages,
+//                   publisher: article.publisher,
+//                   description: article.description,
+//                   total_citations: article.total_citations,
+//                   scholar_id: article.scholar_id,
+//                   url: article.url,
+//                   author_id: objectId,
+//                 });
+//                 await newArticle.save();
+//               }
+//             }
+//           })
+//         );
+//       }
+//     } else {
+//       // Create new author entry
+//       const newAuthor = new Author({
+//         _id: objectId,
+//         scholar_id: data.scholar_id,
+//         author_name: data.author_name,
+//         department: data.department,
+//         subject_area: data.subject_area,
+//         image: data.image,
+//         citation_by: {
+//           table: data.citation_by.table,
+//           graph: data.citation_by.graph,
+//         },
+//       });
+
+//       await newAuthor.save();
+
+//       // Create articles if any
+//       if (data.articles) {
+//         await Promise.all(
+//           data.articles.map(async (article) => {
+//             if (article) {
+//               const newArticle = new Article({
+//                 article_name: article.article_name,
+//                 authors: article.authors,
+//                 publication_date: article.publication_date,
+//                 conference: article.conference,
+//                 institution: article.institution,
+//                 journal: article.journal,
+//                 volume: article.volume,
+//                 issue: article.issue,
+//                 pages: article.pages,
+//                 publisher: article.publisher,
+//                 description: article.description,
+//                 total_citations: article.total_citations,
+//                 scholar_id: article.scholar_id,
+//                 url: article.url,
+//                 author_id: objectId,
+//               });
+//               await newArticle.save();
+//             }
+//           })
+//         );
+//       }
+//     }
+//   } catch (error) {
+//     console.error("Error inserting data:", error);
+//     throw error;
+//   }
+// };
+
 
 const insertAuthorDataToDbScopus = async (data,author_name) => {
     try {
@@ -202,6 +385,7 @@ const updateDataToAuthor = async (data) => {
 
 module.exports = {
     insertDataToDbScholar,
+    updateDataToDbScholar,
     insertAuthorDataToDbScopus,
     insertArticleDataToDbScopus,
     insertDataToJournal,

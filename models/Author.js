@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const AuthorSchema = new mongoose.Schema({
     _id: mongoose.Schema.Types.ObjectId,
+    scholar_id : String,
     author_name: String,
     department: String,
     subject_area: Array,

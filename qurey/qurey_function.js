@@ -1,5 +1,8 @@
 const AuthorScopus = require("../models/AuthorScopus");
 const ArticleScopus = require("../models/ArticleScopus");
+
+const Author = require("../models/Author");
+const Article = require("../models/Article");
 const Journal = require("../models/journal");
 const connectToMongoDB = require("./connectToMongoDB");
 const { MongoClient } = require("mongodb");
@@ -20,6 +23,34 @@ const getOldAuthorData = async () => {
   }
 };
 
+
+const getCountAuthorScholar = async () => {
+  try {
+    const num = await Author.countDocuments();
+    if(typeof num  === 'undefined'){
+        return 0
+    }else{
+        return num;
+    }
+   
+  } catch (error) {
+    return 0    
+  }
+};
+
+const getCountArticleScholar = async () => {
+  try {
+    const num = await Article.countDocuments();
+    if(typeof num  === 'undefined'){
+        return 0
+    }else{
+        return num;
+    }
+   
+  } catch (error) {
+    return 0    
+  }
+};
 
 const getOldNumDocInPage = async (scopus_id) => {
   try {
@@ -216,5 +247,7 @@ module.exports = {
   getOldAuthorData,
   getCountRecordInArticle,
   getAllSourceIdOfArticle,
-  getCiteSourceYearLastestInDb
+  getCiteSourceYearLastestInDb,
+  getCountAuthorScholar,
+  getCountArticleScholar
 };

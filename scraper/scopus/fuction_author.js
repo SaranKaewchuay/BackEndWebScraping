@@ -4,7 +4,7 @@ const cheerio = require("cheerio");
 const { insertAuthorDataToDbScopus, updateDataToAuthor  } = require("../insertToDb/insertToDb");
 const { getCountRecordInAuthor } = require("../../qurey/qurey_function");
 const batchSize = 3; 
-let roundScraping = 11;
+let roundScraping = 0;
 let allAuthors = [];
 
 
@@ -15,7 +15,7 @@ const scraperAuthorScopus = async () => {
     console.log("countRecordInAuthor =", countRecordInAuthor);
     const allURLs = await getURLScopus();
     //allURLs.length
-    for (let i = roundScraping; i < 16; i += batchSize) {
+    for (let i = roundScraping; i < 3; i += batchSize) {
       const batchURLs = allURLs.slice(i, i + batchSize);
 
       roundScraping = i;
@@ -120,13 +120,25 @@ const scraperOneAuthorScopus = async (scopus_id) => {
   }
 };
 
-// Remaining code unchanged...
+const waitForElement = async (selector, maxAttempts = 10, delay = 200) => {
+  let attempts = 0;
+  while (attempts < maxAttempts) {
+    try {
+      await page.waitForSelector(selector, { timeout: 1600 });
+      break;
+    } catch (error) {
+      attempts++;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+};
 
 
 const scrapeAuthorData = async (url, page) => {
   try {
     await page.goto(url, { waitUntil: "networkidle2" });
     await page.waitForTimeout(1300)
+    await waitForElement("#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > section > div > div:nth-child(2) > div > div > div:nth-child(1) > span.Typography-module__lVnit.Typography-module__ix7bs.Typography-module__Nfgvc")
     const html = await page.content();
     const $ = cheerio.load(html);
     const author = {

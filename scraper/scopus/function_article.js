@@ -14,7 +14,7 @@ const {
 const { scraperJournalData } = require("./function_journal");
 
 const batchSize = 3;
-let roundScraping = 11;
+let roundScraping = 0;
 let allArticle = [];
 let allURLs;
 let checkUpdate;
@@ -39,7 +39,7 @@ const scraperArticleScopus = async () => {
   try {
     allURLs = await getURLScopus();
     //allURLs.length
-    while (roundScraping < 16) {
+    while (roundScraping < 3) {
       console.log("\nroundScraping == ", roundScraping, "\n");
       const batchURLs = allURLs.slice(roundScraping, roundScraping + batchSize);
 
@@ -362,7 +362,8 @@ const scrapeArticleData = async (url, page, numNewDoc, author_name) => {
           console.log("Article =", articleCount);
           const articlePage = await page.browser().newPage();
           await articlePage.goto(article_url, { waitUntil: "networkidle2" });
-
+          await page.waitForTimeout(1600);
+          await waitForElement("#source-preview-flyout");
           const waitElement = "#affiliation-section > div > div > ul > li > span";
           await waitForElement(waitElement);
           const check = await checkArticleWU(articlePage);
@@ -535,7 +536,15 @@ const getSourceID = async (page, author_scopus_id) => {
             console.error("\n-------------------------");
             console.error("---- Add New Journal ----");
             console.error("-------------------------\n");
-            const data = await scraperJournalData(source_id, 0);
+            // const scraperJournalData = async (source_id, numNewJournal, page) => {
+              const browser = await puppeteer.launch({ headless: "new" });
+              const page = await browser.newPage();
+              const link = `https://www.scopus.com/sourceid/${source_id}`;
+              await page.goto(link, { waitUntil: "networkidle2" });
+              await page.waitForTimeout(1600);
+              await waitForElement("#csCalculation > div:nth-child(2) > div:nth-child(2) > div > span.fupValue > a > span");
+            const data = await scraperJournalData(source_id, 0, page);
+            await browser.close();
             await insertDataToJournal(data, source_id);
           }
         } else if (!sourceID.includes(source_id)) {

@@ -5,16 +5,13 @@ const { updateDataToJournal } = require("../insertToDb/insertToDb");
 const { getyearJournal, getCountRecordInJournal } = require("../../qurey/qurey_function");
 const { getSourceID, getAllSourceIDJournal, getAllSourceIdOfArticle, getCiteSourceYearLastestInDb } = require("../../qurey/qurey_function");
 
-let roundJournal = 0;
-let journal = [];
-let checkUpdate;
-let checkNotUpdate;
+
 
 const waitForElement = async (selector, maxAttempts = 10, delay = 200) => {
   let attempts = 0;
   while (attempts < maxAttempts) {
     try {
-      await page.waitForSelector(selector, { timeout: 1600 });
+      await page.waitForSelector(selector, { timeout: 1000 });
       break; 
     } catch (error) {
       attempts++;
@@ -23,6 +20,11 @@ const waitForElement = async (selector, maxAttempts = 10, delay = 200) => {
   }
 };
 
+let roundJournal = 0;
+let journal = [];
+let checkUpdate;
+let checkNotUpdate;
+let firstScraping
 const scrapJournal = async () => {
   try {
     let hasSource = false;
@@ -75,13 +77,14 @@ const scrapJournal = async () => {
           }
       
           if (!sourceIDs) {
+            firstScraping = true
             console.log("\n------------------------------");
             console.log("First Scraping Source ID : ", journalItem);
             console.log("------------------------------");
             console.log("yearLastestInWebPage = ", yearLastestInWebPage);
             console.log("yearLastestInDb = ", yearLastestInDb,"\n");
             const data = await scraperJournalData(journalItem, numNewJournal, page);
-            return { status: "fulfilled", value: data, source_id: journalItem };
+            return { status: "fulfilled", value: data, source_id: journalItem, firstScraping: firstScraping };
           } else if (yearLastestInWebPage > yearLastestInDb) {
             checkUpdate = true;
             console.log("\n------------------------------");
@@ -120,7 +123,7 @@ const scrapJournal = async () => {
             if (result.status === "fulfilled") {
               const data = result.value;
               if (data.value.length !== 0 || data.checkUpdate) {
-                if (checkUpdate == false && checkNotUpdate == false ){
+                if (data.firstScraping){
                   await insertDataToJournal(data.value, data.source_id);
                   journal.push(data.value)
                 } else if (data.checkUpdate) {
@@ -157,6 +160,7 @@ const scrapJournal = async () => {
   }
 };
 
+
 const scraperCiteScoreYearLastestInWebPage = async (page) => {
   try {
     const html = await page.content();
@@ -164,9 +168,8 @@ const scraperCiteScoreYearLastestInWebPage = async (page) => {
     const yeareLastest = $("#year-button > span.ui-selectmenu-text").text();
     return Number(yeareLastest);
   } catch (error) {
-    // Handle the error here or rethrow it if needed
     console.error("Error occurred in scraperCiteScoreYearLastestInWebPage:", error);
-    throw error; // Rethrow the error to be handled by the calling code
+    throw error;
   }
 };
 
@@ -176,47 +179,31 @@ const scrapOneJournal = async (source_id) => {
   try {
     const batchSize = 5;
     let roundJournal = 0;
-
     const journal_data = [];
     const journal_All = source_id.split(",").map(e => e.trim());
+    const totalJournals = journal_All.length;
 
-    
+    while (roundJournal < totalJournals) {
+      const batch = journal_All.slice(roundJournal, roundJournal + batchSize);
 
-    let sizeLoop =
-      journal_All.length < batchSize && journal_All.length > 0
-        ? journal_All.length
-        : batchSize;
-
-    for (let i = roundJournal; i < journal_All.length; i += sizeLoop) {
-      const batch = journal_All.slice(i, i + batchSize);
-
-      const promises = batch.map(async (journalItem, index) => {
-        const currentIndex = i + index + 1;
-        console.log(
-          currentIndex,
-          "/",
-          journal_All.length,
-          "| Source ID:",
-          journalItem
-        );
+      const promises = batch.map(async (journalItem) => {
+        console.log(`Scraping Journal (${roundJournal + 1}/${totalJournals}): Source ID ${journalItem}`);
 
         try {
           const browser = await puppeteer.launch({ headless: "new" });
-          let page = await browser.newPage();
+          const page = await browser.newPage();
           const link = `https://www.scopus.com/sourceid/${journalItem}`;
           await page.goto(link, { waitUntil: "networkidle2" });
-          // await page.waitForTimeout(1600)
-          await waitForElement("#csCalculation > div:nth-child(2) > div:nth-child(2) > div > span.fupValue > a > span")
+          // await page.waitForTimeout(1600);
+          await waitForElement("#csCalculation > div:nth-child(2) > div:nth-child(2) > div > span.fupValue > a > span");
           const data = await scraperJournalData(journalItem, 0, page);
-          console.log("Finish Scraping Journal ID: ", journalItem);
+          console.log(`Finish Scraping Journal ID: ${journalItem}`);
           return { status: "fulfilled", value: data };
         } catch (error) {
-          console.error("\nError occurred while scraping\n");
-          return { status: "rejected"}
+          console.error("Error occurred while scraping Journal ID:", journalItem);
+          return { status: "rejected" };
         }
       });
-
-
 
       const results = await Promise.allSettled(promises);
       results.forEach((result) => {
@@ -224,16 +211,18 @@ const scrapOneJournal = async (source_id) => {
           journal_data.push(result.value.value);
         }
       });
-      roundJournal += batchSize;
 
+      roundJournal += batchSize;
     }
+
     console.log("journal_data =", journal_data);
     return journal_data;
   } catch (error) {
-    console.error("\nError occurred while scraping\n");
+    console.error("Error occurred while scraping:", error);
     return [];
   }
 };
+
 
 
 //scrapJournalDetail()
@@ -307,8 +296,6 @@ const dropDownOption = async (page) => {
   const dropdownSelector = 'select[name="year"]';
   if (await page.$(dropdownSelector)) {
     await page.waitForSelector(dropdownSelector);
-
-    // getDropdownOptions()
     const dropdownOptions = await page.evaluate((selector) => {
       const dropdown = document.querySelector(selector);
       const options = Array.from(dropdown.options).map(
@@ -319,6 +306,7 @@ const dropDownOption = async (page) => {
     return dropdownOptions;
   }
 };
+
 
 const processDropdowns = async (page, numNewJournal) => {
   const dataCitation = [];
@@ -368,6 +356,8 @@ const processDropdowns = async (page, numNewJournal) => {
 
   return dataCitation.length > 0 ? dataCitation : null;
 };
+
+
 
 const scrapSubjectAreaJournal = async (html) => {
   try {

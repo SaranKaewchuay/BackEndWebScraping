@@ -30,6 +30,7 @@
     "p-limit": "^4.0.0",
     "portfinder": "^1.0.32",
     "puppeteer": "^19.6.2",
+    "puppeteer-cluster": "^0.23.0",
     "queue": "^7.0.0",
     "user-agents": "^1.0.1421",
     "xpath": "^0.0.32"

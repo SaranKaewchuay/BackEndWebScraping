@@ -12,11 +12,12 @@ const {
   updateNewDoc,
 } = require("../../qurey/qurey_function");
 const { scraperJournalData } = require("./function_journal");
+const allURLs = require("../json/scopus");
+
 
 const batchSize = 3;
 let roundScraping = 0;
 let allArticle = [];
-let allURLs;
 let checkUpdate;
 let checkNotUpdate;
 let errorURLs = [];
@@ -26,7 +27,7 @@ const waitForElement = async (selector, maxAttempts = 10, delay = 200) => {
   let attempts = 0;
   while (attempts < maxAttempts) {
     try {
-      await page.waitForSelector(selector, { timeout: 1600 });
+      await page.waitForSelector(selector, { timeout: 1200 });
       break;
     } catch (error) {
       attempts++;
@@ -37,8 +38,9 @@ const waitForElement = async (selector, maxAttempts = 10, delay = 200) => {
 
 const scraperArticleScopus = async () => {
   try {
-    allURLs = await getURLScopus();
+    // allURLs = await getURLScopus();
     //allURLs.length
+    let linkError = []
     while (roundScraping < 3) {
       console.log("\nroundScraping == ", roundScraping, "\n");
       const batchURLs = allURLs.slice(roundScraping, roundScraping + batchSize);
@@ -58,87 +60,93 @@ const scraperArticleScopus = async () => {
           );
           console.log(`URL: ${url.url}`);
 
-          await page.goto(url.url, { waitUntil: "networkidle2" });
+          const response =  await page.goto(url.url, { waitUntil: "networkidle2" });
           await page.waitForTimeout(1600);
           await page.waitForSelector(
             "#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > section > div > div:nth-child(2) > div > div > div:nth-child(1) > span.Typography-module__lVnit.Typography-module__ix7bs.Typography-module__Nfgvc"
           );
 
-          const html = await page.content();
+          if(response.ok()){
+          
+              const html = await page.content();
+              const numDocInPage = await getDocumentInpage(html);
+              const oldNumDocInPage = await getOldNumDocInPage(scopus_id);
+              const numArticleInDB = await getNumArticleInDB(scopus_id);
 
-          const numDocInPage = await getDocumentInpage(html);
-          const oldNumDocInPage = await getOldNumDocInPage(scopus_id);
-          const numArticleInDB = await getNumArticleInDB(scopus_id);
+              let article_data;
+              if (numArticleInDB === 0) {
+                console.log("\n-------------------------");
+                console.log("Do this loop First Scrap");
+                console.log("-------------------------");
+                console.log("numDocinPage =", numDocInPage);
+                console.log("oldNumDocInPage =", oldNumDocInPage);
+                console.log("numArticleInDB =", numArticleInDB,"\n");
+                const article = await scrapeArticleData(url.url, page, 0, url.name);
+                console.log(
+                  "\nNumber of WU Articles of ",
+                  url.name,
+                  ": ",
+                  article.article.length,
+                  "\n"
+                );
 
-          let article_data;
-          if (numArticleInDB === 0) {
-            console.log("\n-------------------------");
-            console.log("Do this loop First Scrap");
-            console.log("-------------------------");
-            console.log("numDocinPage =", numDocInPage);
-            console.log("oldNumDocInPage =", oldNumDocInPage);
-            console.log("numArticleInDB =", numArticleInDB,"\n");
-            const article = await scrapeArticleData(url.url, page, 0, url.name);
-            console.log(
-              "\nNumber of WU Articles of ",
-              url.name,
-              ": ",
-              article.article.length,
-              "\n"
-            );
+                article_data = article.article;
+                allArticle.push(article_data);
 
-            article_data = article.article;
-            allArticle.push(article_data);
+                return { status: "fulfilled", article: article_data };
+              } else if (numDocInPage !== oldNumDocInPage) {
+                checkUpdate = true;
+                console.log("\n---------------------------------------");
+                console.log("Do this loop Scrap Add New Article");
+                console.log("---------------------------------------");
+                console.log("numDocinPage =", numDocInPage);
+                console.log("oldNumDocInPage =", oldNumDocInPage);
+                console.log("numArticleInDB =", numArticleInDB,"\n");
+                const numNewDoc = numDocInPage - oldNumDocInPage;
+                const article = await scrapeArticleData(
+                  url.url,
+                  page,
+                  numNewDoc,
+                  url.name
+                );
+                console.log(
+                  "\nNumber of WU Articles of ",
+                  url.name,
+                  ": ",
+                  article.article.length,
+                  "\n"
+                );
+                article_data = article.article;
+                allArticle.push(article_data);
 
-            return { status: "fulfilled", article: article_data };
-          } else if (numDocInPage !== oldNumDocInPage) {
-            checkUpdate = true;
-            console.log("\n---------------------------------------");
-            console.log("Do this loop Scrap Add New Article");
-            console.log("---------------------------------------");
-            console.log("numDocinPage =", numDocInPage);
-            console.log("oldNumDocInPage =", oldNumDocInPage);
-            console.log("numArticleInDB =", numArticleInDB,"\n");
-            const numNewDoc = numDocInPage - oldNumDocInPage;
-            const article = await scrapeArticleData(
-              url.url,
-              page,
-              numNewDoc,
-              url.name
-            );
-            console.log(
-              "\nNumber of WU Articles of ",
-              url.name,
-              ": ",
-              article.article.length,
-              "\n"
-            );
-            article_data = article.article;
-            allArticle.push(article_data);
+                return {
+                  status: "fulfilled",
+                  article: article_data,
+                  scopus_id: scopus_id,
+                  checkUpdate: checkUpdate,
+                  numDocInPage: numDocInPage,
+                };
+              } else if (numDocInPage === oldNumDocInPage) {
+                checkNotUpdate = true;
+                console.log("\n-------------");
+                console.log("Skip Loop");
+                console.log("-------------");
+                console.log("numDocinPage =", numDocInPage);
+                console.log("oldNumDocInPage =", oldNumDocInPage);
+                console.log("numArticleInDB =", numArticleInDB,"\n");
+                return {
+                  status: "fulfilled",
+                  article: [],
+                  checkNotUpdate: checkNotUpdate,
+                };
+              } else {
+                return { status: "fulfilled", article: [] };
+              }
+            }else{
+              linkError.push({name: url.name, url: url.url})
+            }
 
-            return {
-              status: "fulfilled",
-              article: article_data,
-              scopus_id: scopus_id,
-              checkUpdate: checkUpdate,
-              numDocInPage: numDocInPage,
-            };
-          } else if (numDocInPage === oldNumDocInPage) {
-            checkNotUpdate = true;
-            console.log("\n-------------");
-            console.log("Skip Loop");
-            console.log("-------------");
-            console.log("numDocinPage =", numDocInPage);
-            console.log("oldNumDocInPage =", oldNumDocInPage);
-            console.log("numArticleInDB =", numArticleInDB,"\n");
-            return {
-              status: "fulfilled",
-              article: [],
-              checkNotUpdate: checkNotUpdate,
-            };
-          } else {
-            return { status: "fulfilled", article: [] };
-          }
+
         } catch (error) {
           console.error("\nError occurred while scraping\n");
           return { status: "rejected" };
@@ -198,14 +206,9 @@ const scraperArticleScopus = async () => {
       }
       roundScraping += batchSize;
     }
-    // console.log("\nStart Scraping Journal\n");
-    // if(sourceID.length > 0){
-    //   console.log("sourceID = ",sourceID)
-    //   await scrapJournal(sourceID);
-    // }
 
     console.log("Finish Scraping Scopus");
-    return allArticle;
+    return {message:"Finish Scraping Article Scopus", error : linkError};
   } catch (error) {
     console.error("\nError occurred while scraping\n");
     await scraperArticleScopus();
@@ -231,12 +234,12 @@ const scraperOneArticleScopus = async (eid) => {
       const batchEid = all_eid.slice(i, i + sizeLoop);
       const promises = batchEid.map(async (id, index) => {
         articleCount++;
-        console.log("Article =", articleCount);
+        console.log(`Scraping Article Of Author (${index + 1}/${all_eid.length}): Scopus ID ${id}`);
         const articlePage = await page.browser().newPage();
         const url = `https://www.scopus.com/record/display.uri?eid=2-s2.0-${id}&origin=resultslist&sort=plf-f`;
         await articlePage.goto(url, { waitUntil: "networkidle2" });
         const waitElement = "#affiliation-section > div > div > ul > li:nth-child(1) > span";
-        // await page.waitForTimeout(1200)
+        await page.waitForTimeout(1600)
         await waitForElement(waitElement);
         const check = await checkArticleWU(articlePage);
 
@@ -317,31 +320,28 @@ const scrapeArticleData = async (url, page, numNewDoc, author_name) => {
     await page.waitForSelector("#documents");
     await page.click("#documents");
     let html;
-    const waitElement1 =
-    "#documents-panel > div > div.Columns-module__FxWfo > div:nth-child(2) > div > els-results-layout > div:nth-child(2) > ul > li:nth-child(1) > div > div.col-lg-21.col-md-18.col-xs-18 > div.list-title.margin-size-24-t.margin-size-0-b.text-width-32 > h4 > a > span > span";
+
     if (numNewDoc == 0) {
       const waitElement2 =
         "#documents-panel > div > div.Columns-module__FxWfo > div:nth-child(2) > div > els-results-layout > div > div > div > label > select";
       await waitForElement(waitElement2);
       await page.select(
-        "#documents-panel > div > div.Columns-module__FxWfo > div:nth-child(2) > div > els-results-layout > div > div > div > label > select",
+        waitElement2,
         "200"
       );
-     
-      await waitForElement(waitElement1);
-      html = await page.content();
-
-    }else{
-      await waitForElement(waitElement1);
-      html = await page.content();
     }
 
+    const waitElement1 =
+      "#documents-panel > div > div.Columns-module__FxWfo > div:nth-child(2) > div > els-results-layout > div:nth-child(2) > ul > li:nth-child(1) > div > div.col-lg-21.col-md-18.col-xs-18 > div.list-title.margin-size-24-t.margin-size-0-b.text-width-32 > h4 > a > span > span";
+    
+    await waitForElement(waitElement1);
+    html = await page.content();
+    
     let link_Article = await getArticleUrl(html, numNewDoc);
 
-    if (link_Article.length == 0) {
+    if (link_Article.length === 0) {
       console.log("Catch 1111 **");
     } else {
-      const link_not_wu = [];
       console.log(
         "Number of Articles In scopus of ",
         author_name,
@@ -349,49 +349,64 @@ const scrapeArticleData = async (url, page, numNewDoc, author_name) => {
         link_Article.length
       );
       console.log("Scraping Articles: ");
+      
       const batchSize = 7;
       const article_detail = [];
+      const link_not_wu = [];
+      
       let lengthArticle = numNewDoc === 0 ? link_Article.length : numNewDoc;
       let sizeLoop =
         numNewDoc < batchSize && numNewDoc > 0 ? numNewDoc : batchSize;
       let articleCount = 0;
+      
       for (let i = 0; i < lengthArticle; i += sizeLoop) {
         const batchUrls = link_Article.slice(i, i + sizeLoop);
         const promises = batchUrls.map(async (article_url, index) => {
           articleCount++;
           console.log("Article =", articleCount);
+          
           const articlePage = await page.browser().newPage();
-          await articlePage.goto(article_url, { waitUntil: "networkidle2" });
-          await page.waitForTimeout(1600);
-          await waitForElement("#source-preview-flyout");
-          const waitElement = "#affiliation-section > div > div > ul > li > span";
-          await waitForElement(waitElement);
-          const check = await checkArticleWU(articlePage);
+          
+          try {
+            await Promise.all([
+              articlePage.goto(article_url, { waitUntil: "networkidle2" }),
+              articlePage.waitForTimeout(1600),
+              waitForElement("#source-preview-flyout"),
+              waitForElement("#affiliation-section > div > div > ul > li > span")
+            ]);
 
-          if (check == "false") {
-            link_not_wu.push(article_url);
-          }
-          if (check === "true") {
-            const article_data = await getArticleDetail(
-              articlePage,
-              article_url,
-              url
-            );
-            await articlePage.close();
-            return article_data;
-          } else {
-            await articlePage.close();
+            const check = await checkArticleWU(articlePage);
+
+            if (check === "false") {
+              link_not_wu.push(article_url);
+              articlePage.close();
+              return null;
+            }
+            
+            if (check === "true") {
+              const article_data = await getArticleDetail(
+                articlePage,
+                article_url,
+                url
+              );
+              articlePage.close();
+              return article_data;
+            } else {
+              articlePage.close();
+              return null;
+            }
+          } catch (error) {
+            console.error("Failed to scrape article:", error);
+            articlePage.close();
             return null;
           }
         });
 
         const results = await Promise.allSettled(promises);
+        
         results.forEach((result) => {
           if (result.status === "fulfilled" && result.value !== null) {
             article_detail.push(result.value);
-          } else if (result.status === "rejected") {
-            // console.error("Failed to scrape article:", result.reason);
-            // await scraperArticleScopus();
           }
         });
       }
@@ -400,10 +415,13 @@ const scrapeArticleData = async (url, page, numNewDoc, author_name) => {
     }
   } catch (error) {
     console.error("\nError occurred while scraping\n");
-    console.error("---- Article Error ----",error);
+    console.error("---- Article Error ----", error);
     return { article: null, link_not_wu: null };
   }
 };
+
+
+
 
 const getScopusID = async (url) => {
   try {

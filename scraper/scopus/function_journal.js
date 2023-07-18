@@ -152,7 +152,8 @@ const scrapJournal = async () => {
       roundJournal += batchSize; 
     }
     console.log("Finish Scraping Scopus");
-    return journal;
+    // journal
+    return {message: "Finish Scraping journal Scopus"};
   } catch (error) {
     console.error("\nError occurred while scraping\n");
     await scrapJournal()
@@ -335,12 +336,6 @@ const processDropdowns = async (page, numNewJournal) => {
       const data = { year, citation, category };
       dataCitation.push(data);
     }
-
-    if(dataCitation.length === 0){
-      console.log("DropDown === 0")
-      await processDropdowns(page, numNewJournal)
-    }
-
   } else if (await page.$("#rpResult")) {
     const html = await page.content();
     const $ = cheerio.load(html);

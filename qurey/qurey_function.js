@@ -23,6 +23,27 @@ const getOldAuthorData = async () => {
   }
 };
 
+const addCountDocumenInWu = async(scopus_id, documentsInWu) => {
+  try {
+    console.log("documentsInWu = ",documentsInWu)
+    console.log("scopus_id= ",scopus_id)
+    const filter = { author_scopus_id : scopus_id };
+
+    const updateOperation = { $set: { wu_documents: documentsInWu } };
+
+    const result = await AuthorScopus.updateOne(filter, updateOperation);
+
+    if (result.modifiedCount > 0) {
+      console.log('Added Count Documen In Wu | Scopus ID : ',scopus_id ,' successfully.');
+    } else {
+      console.log('Document not found or no changes made.');
+    }
+  } catch (error) {
+    console.error('Error occurred:', error);
+  } 
+}
+
+
 
 const getCountAuthorScholar = async () => {
   try {
@@ -249,5 +270,6 @@ module.exports = {
   getAllSourceIdOfArticle,
   getCiteSourceYearLastestInDb,
   getCountAuthorScholar,
-  getCountArticleScholar
+  getCountArticleScholar,
+  addCountDocumenInWu
 };

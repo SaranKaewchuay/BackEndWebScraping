@@ -10,8 +10,11 @@ const JournalSchema = new mongoose.Schema({
     eissn: String,
     source_type: String,
     subject_area: Array,
+    calculated: String,
+    changeJournal: String,
     cite_source: Array
    
-})
+   
+},{versionKey: false })
 
 module.exports = mongoose.model('Journal', JournalSchema)

@@ -1,7 +1,7 @@
 const puppeteer = require("puppeteer");
 const cheerio = require("cheerio");
 const axios = require("axios");
-const { insertDataToDbScholar,updateDataToDbScholar } = require("../insertToDb/insertToDb");
+const { insertDataToDbScholar} = require("../insertToDb/insertToDb");
 const userAgent = require("user-agents");
 const {   getCountAuthorScholar, getCountArticleScholar } = require("../../qurey/qurey_function");
 // process.setMaxListeners(100);
@@ -172,23 +172,11 @@ const getAuthorAllDetail = async (authorObject, number_author, length) => {
 
       authorAllDetail = await getAuthorDetail(html, url_checked);
       authorAllDetail.articles = await Promise.all(article_detail_promises);
+      authorAllDetail.documents = article_detail_promises.length 
 
       if (authorAllDetail) {
-        if(await getCountAuthorScholar() === 0 && getCountArticleScholar() === 0){
           insertDataToDbScholar(authorAllDetail);
-        }else{
-          updateDataToDbScholar(authorAllDetail);
-        }
-         
       }
-
-      console.log("");
-      console.log(
-        "Data insertion of ",
-        authorObject.name,
-        " was completed successfully"
-      );
-      console.log("");
     } else {
       authorAllDetail = false;
       url_not_ready = {

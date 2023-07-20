@@ -20,6 +20,9 @@ const ArticleSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'authors'
     }
+    
 
-})
+},
+{ versionKey: false }
+)
 module.exports = mongoose.model('Article', ArticleSchema)

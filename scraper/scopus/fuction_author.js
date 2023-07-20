@@ -15,14 +15,14 @@ let allAuthors = [];
 const scraperAuthorScopus = async () => {
   try {
     let countRecordInAuthor = await getCountRecordInAuthor();
-    console.log("countRecordInAuthor =", countRecordInAuthor);
+    // console.log("countRecordInAuthor =", countRecordInAuthor);
     // const allURLs = await getURLScopus();
     //allURLs.length
     for (let i = roundScraping; i < 3; i += batchSize) {
       const batchURLs = allURLs.slice(i, i + batchSize);
 
       roundScraping = i;
-      console.log("\nroundScraping =", roundScraping,"\n");
+      // console.log("\nroundScraping =", roundScraping,"\n");
       const promises = batchURLs.map(async (url, index) => {
         const i = roundScraping + index;
         console.log(`Scraping Author ${i + 1} of ${allURLs.length}: ${url.name}`);
@@ -46,7 +46,7 @@ const scraperAuthorScopus = async () => {
       const mappedResults = results.map(result => result.value.author !== null);
       const hasFalse = mappedResults.includes(false);
       const finalResult = !hasFalse;
-      console.log("mappedResults = ",mappedResults)
+      // console.log("mappedResults = ",mappedResults)
 
       if(finalResult){
         if (results.length === batchSize || results.length === batchURLs.length) {

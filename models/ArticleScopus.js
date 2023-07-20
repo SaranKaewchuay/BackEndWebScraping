@@ -15,5 +15,5 @@ const ArticleScopusSchema = new mongoose.Schema({
     abstract: String,
     url: String,
     author_scopus_id: String
-})
+},{versionKey: false })
 module.exports = mongoose.model('ArticleScopus', ArticleScopusSchema)

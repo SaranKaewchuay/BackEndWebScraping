@@ -8,73 +8,19 @@ const { ObjectId } = require('mongodb');
 process.setMaxListeners(100);
 
 
-// Function to insert new data
 const insertDataToDbScholar = async (data) => {
   try {
     const objectId = new ObjectId();
-
-    const newAuthor = new Author({
-      _id: objectId,
-      scholar_id: data.scholar_id,
-      author_name: data.author_name,
-      department: data.department,
-      subject_area: data.subject_area,
-      image: data.image,
-      citation_by: {
-        table: data.citation_by.table,
-        graph: data.citation_by.graph,
-      },
-    });
-
-    await newAuthor.save();
-
-    if (data.articles) {
-      await Promise.all(
-        data.articles.map(async (article) => {
-          if (article) {
-            const newArticle = new Article({
-              article_id: article.article_id,
-              article_name: article.article_name,
-              authors: article.authors,
-              publication_date: article.publication_date,
-              conference: article.conference,
-              institution: article.institution,
-              journal: article.journal,
-              volume: article.volume,
-              issue: article.issue,
-              pages: article.pages,
-              publisher: article.publisher,
-              description: article.description,
-              total_citations: article.total_citations,
-              scholar_id: article.scholar_id,
-              url: article.url,
-              author_id: objectId,
-            });
-            await newArticle.save();
-          }
-        })
-      );
-    }
-  } catch (error) {
-    console.error("Error inserting data:", error);
-    throw error;
-  }
-};
-
-// Function to update existing data
-const updateDataToDbScholar = async (data) => {
-  try {
-    console.log("data.scholar_id = ",data.scholar_id)
     const existingAuthor = await Author.findOne({ scholar_id: data.scholar_id });
-    console.log(" existingAuthor = ", existingAuthor)
+
     if (existingAuthor) {
       existingAuthor.author_name = data.author_name;
+      existingAuthor.documents = data.documents;
       existingAuthor.department = data.department;
       existingAuthor.subject_area = data.subject_area;
       existingAuthor.image = data.image;
       existingAuthor.citation_by.table = data.citation_by.table;
       existingAuthor.citation_by.graph = data.citation_by.graph;
-
       await existingAuthor.save();
 
       if (data.articles) {
@@ -84,7 +30,6 @@ const updateDataToDbScholar = async (data) => {
               const existingArticle = await Article.findOne({ article_id: article.article_id });
 
               if (existingArticle) {
-                // Article exists, update its information
                 existingArticle.article_name = article.article_name;
                 existingArticle.authors = article.authors;
                 existingArticle.publication_date = article.publication_date;
@@ -99,11 +44,8 @@ const updateDataToDbScholar = async (data) => {
                 existingArticle.total_citations = article.total_citations;
                 existingArticle.url = article.url;
                 existingArticle.author_id = existingAuthor._id;
-
                 await existingArticle.save();
               } else {
-                // Article doesn't exist, create a new one
-                console.log("เข้า else")
                 const newArticle = new Article({
                   article_id: article.article_id,
                   article_name: article.article_name,
@@ -121,19 +63,60 @@ const updateDataToDbScholar = async (data) => {
                   url: article.url,
                   author_id: existingAuthor._id,
                 });
-
                 await newArticle.save();
               }
             }
           })
         );
       }
+      console.log("Update data of", data.author_name, "successful.");
     } else {
-      // If author doesn't exist, insert new data
-      await insertDataToDbScholar(data);
+      const newAuthor = new Author({
+        _id: objectId,
+        scholar_id: data.scholar_id,
+        documents: data.documents,
+        author_name: data.author_name,
+        department: data.department,
+        subject_area: data.subject_area,
+        image: data.image,
+        citation_by: {
+          table: data.citation_by.table,
+          graph: data.citation_by.graph,
+        },
+      });
+      await newAuthor.save();
+
+      if (data.articles) {
+        await Promise.all(
+          data.articles.map(async (article) => {
+            if (article) {
+              const newArticle = new Article({
+                article_id: article.article_id,
+                article_name: article.article_name,
+                authors: article.authors,
+                publication_date: article.publication_date,
+                conference: article.conference,
+                institution: article.institution,
+                journal: article.journal,
+                volume: article.volume,
+                issue: article.issue,
+                pages: article.pages,
+                publisher: article.publisher,
+                description: article.description,
+                total_citations: article.total_citations,
+                scholar_id: article.scholar_id,
+                url: article.url,
+                author_id: objectId,
+              });
+              await newArticle.save();
+            }
+          })
+        );
+      }
+      console.log("Insert data of", data.author_name, "successful.");
     }
   } catch (error) {
-    console.error("Error updating data:", error);
+    console.error("Error inserting/updating data:", error);
     throw error;
   }
 };
@@ -217,6 +200,8 @@ const insertDataToJournal = async (data,source_id) => {
             eissn: data.eissn,
             source_type: data.source_type,
             subject_area: data.subject_area,
+            calculated: data.calculated,
+            changeJournal: data.changeJournal,
             cite_source: data.cite_source,
         });
 
@@ -290,7 +275,6 @@ const updateDataToAuthor = async (data) => {
 
 module.exports = {
     insertDataToDbScholar,
-    updateDataToDbScholar,
     insertAuthorDataToDbScopus,
     insertArticleDataToDbScopus,
     insertDataToJournal,

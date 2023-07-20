@@ -5,6 +5,7 @@ const AuthorSchema = new mongoose.Schema({
     author_name: String,
     department: String,
     subject_area: Array,
+    documents: String,
     image: String,
     citation_by: {
         table: [{
@@ -30,6 +31,7 @@ const AuthorSchema = new mongoose.Schema({
         }]
     }
 },{
-    _id:false
+    _id:false,
+    versionKey: false 
 })
 module.exports = mongoose.model('Author',AuthorSchema)

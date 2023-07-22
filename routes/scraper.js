@@ -19,10 +19,11 @@ const { scrapOneJournal } = require("../scraper/scopus/function_journal");
 const {
   getOldAuthorData,
   getCountRecordInArticle,
+  getCountRecordInAuthor
 } = require("../qurey/qurey_function");
 const CronJob = require("cron").CronJob;
 const puppeteer = require("puppeteer");
-
+const connectToMongoDB = require("../qurey/connectToMongoDB");
 const {
   scraperArticleScopus,
   sourceID,
@@ -30,24 +31,31 @@ const {
 } = require("../scraper/scopus/function_article");
 const { scrapJournal } = require("../scraper/scopus/function_journal");
 process.setMaxListeners(100);
-const authorURL = require("../scraper/json/scholar");
+// const authorURL = require("../scraper/json/scholar");
 
 (async () => {
+  await connectToMongoDB();
   await getOldAuthorData();
 })();
+// const allURLs = require("../scraper/json/scopus");
 
 
 
 router.get("/scraper-scopus-cron", async (req, res) => {
   try {
+    console.log("AAAAA = ")
+    await getOldAuthorData();
     const articleCount = await getCountRecordInArticle();
+    // const now_author = await  getCountRecordInAuthor()
     let journalRequest
     const authorRequest = axios.get("http://localhost:8000/scraper/scopus-author");
     const articleRequest = axios.get("http://localhost:8001/scraper/scopus-article");
     if(articleCount !== 0){
       journalRequest = axios.get("http://localhost:8002/scraper/scopus-journal")
     }
-  
+  //articleCount === 0
+
+
     if (articleCount === 0) {
       await Promise.all([authorRequest, articleRequest]);
       setTimeout(() => {
@@ -71,14 +79,15 @@ router.get("/scraper-scopus-cron", async (req, res) => {
 
 router.get("/scholar", async (req, res) => {
   try {
-    // const authorURL = await getURLScholar();
+    const authorURL = await getURLScholar();
     let url_not_ready = [];
     let num_scraping = 0;
     console.log("\nStart Scraping Researcher Data From Google Scholar\n");
+    // const batchSize = 60;
     const batchSize = 5;
     //214 284 585
     // authorURL.length
-    for (let i = 0; i < 20; i += batchSize) {
+    for (let i = 65; i < 70; i += batchSize) {
       const batchAuthors = authorURL.slice(i, i + batchSize);
       const scrapingPromises = batchAuthors.map((author, index) => {
         const number_author = i + index + 1;
@@ -180,9 +189,9 @@ router.get("/scopus-article", async (req, res) => {
 
 router.get("/scopus-journal", async (req, res) => {
   try {
-    console.log("\nStart Scraping Journal Data From Scopus\n");
+    // console.log("\nStart Scraping Journal Data From Scopus\n");
     const journal = await scrapJournal();
-    console.log("\nFinish Scraping Journal Data From Scopus\n");
+    // console.log("\nFinish Scraping Journal Data From Scopus\n");
 
     res.status(200).json({
       journalScopus: journal,
@@ -242,7 +251,7 @@ router.get("/scraper-articleOfauthor-scopus", async (req, res) => {
     console.log("\nStart Scraping Article Scopus\n");
 
     const url = `https://www.scopus.com/authid/detail.uri?authorId=${scopus_id}`;
-    const browser = await puppeteer.launch({ headless: "new" });
+    const browser = await puppeteer.launch({ headless: false });
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: "networkidle2" });
     const article = await scrapeArticleData(url, page, 0, scopus_id);

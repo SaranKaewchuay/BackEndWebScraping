@@ -2,27 +2,32 @@ const axios = require("axios");
 const puppeteer = require("puppeteer");
 const cheerio = require("cheerio");
 const { insertAuthorDataToDbScopus, updateDataToAuthor  } = require("../insertToDb/insertToDb");
-const { getCountRecordInAuthor } = require("../../qurey/qurey_function");
-
+const { getCountRecordInAuthor,hasScopusIdInAuthor ,getOldAuthorData} = require("../../qurey/qurey_function");
+const connectToMongoDB = require("../../qurey/connectToMongoDB");
 const allURLs = require("../json/scopus");
 
 const batchSize = 3; 
 let roundScraping = 0;
 let allAuthors = [];
-
-
+// let countRecordInAuthor 
+// (async () => {
+//   countRecordInAuthor = await getCountRecordInAuthor();
+//   console.log("countRecordInAuthor =", countRecordInAuthor);
+// })();
 
 const scraperAuthorScopus = async () => {
   try {
-    let countRecordInAuthor = await getCountRecordInAuthor();
-    // console.log("countRecordInAuthor =", countRecordInAuthor);
+    // await connectToMongoDB();
+    // await getOldAuthorData();
+    roundScraping = 0;
+    allAuthors = []
     // const allURLs = await getURLScopus();
     //allURLs.length
-    for (let i = roundScraping; i < 3; i += batchSize) {
+    for (let i = roundScraping; i < allURLs.length; i += batchSize) {
       const batchURLs = allURLs.slice(i, i + batchSize);
 
       roundScraping = i;
-      // console.log("\nroundScraping =", roundScraping,"\n");
+      console.log("\nRound Scraping : ", roundScraping,"\n");
       const promises = batchURLs.map(async (url, index) => {
         const i = roundScraping + index;
         console.log(`Scraping Author ${i + 1} of ${allURLs.length}: ${url.name}`);
@@ -31,8 +36,24 @@ const scraperAuthorScopus = async () => {
         const page = await browser.newPage();
         try {
           const author = await scrapeAuthorData(url.url, page);
+          let author_data 
+          // for (const key in author) {
+          //   console.log("jsonData[key] = ",jsonData[key])
+          //   if (jsonData[key] === null && jsonData[key] === "") {
+          //     author_data = null
+          //     break;
+          //   }else{
+          //     author_data = author
+          //   }
+          // }
+          if(author.citations_graph === null || author.documents_graph === null){
+            author_data = null
+          }else{
+            author_data = author
+          }
+    
           allAuthors.push(author);
-          return { status: "fulfilled", author: author };
+          return { status: "fulfilled", author: author_data };
         } catch (error) {
           console.error("\nError occurred while scraping\n");
         } finally {
@@ -46,23 +67,23 @@ const scraperAuthorScopus = async () => {
       const mappedResults = results.map(result => result.value.author !== null);
       const hasFalse = mappedResults.includes(false);
       const finalResult = !hasFalse;
-      // console.log("mappedResults = ",mappedResults)
+      console.log("mappedResults = ",mappedResults)
 
       if(finalResult){
         if (results.length === batchSize || results.length === batchURLs.length) {
           for (const result of results) {
             if (result.status === "fulfilled") {
-              const data = result.value.author;
-              if (countRecordInAuthor > 0) {
-                console.log("\n-----------------")
-                console.log("Update Author")
-                console.log("-----------------")
+              const data = result.value.author; // id เคยมีไหม
+              if (await hasScopusIdInAuthor(data.author_scopus_id)) {
+                console.log("\n--------------------------------------------------------")
+                console.log("Update Author Data Of ",data.name)
+                console.log("--------------------------------------------------------")
                 await updateDataToAuthor(data);
               } else {
-                console.log("\n------------------")
-                console.log("First Scraping Author")
-                console.log("------------------")
-                await insertAuthorDataToDbScopus(data, data.name);
+                console.log("\n--------------------------------------------------------------")
+                console.log("First Scraping Author Of ",data.name)
+                console.log("---------------------------------------------------------------")
+                await insertAuthorDataToDbScopus(data);
               }
             } else if (result.status === "rejected") {
               console.error("\nError occurred while scraping\n");
@@ -78,14 +99,11 @@ const scraperAuthorScopus = async () => {
         console.log("have author null")
         await scraperAuthorScopus();
       }
-
-      
     }
-
-    console.log("Finish Scraping Scopus");
+    // console.log("Finish Scraping Scopus");
     return allAuthors;
   } catch (error) {
-      console.error("\nError occurred while scraping\n");
+      console.error("\nError occurred while scraping\n",error);
       return [];
 };
 }

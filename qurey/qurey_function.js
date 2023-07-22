@@ -14,19 +14,52 @@ const { MongoClient } = require("mongodb");
 
 let oldAuthorData = []
 
+const getOldNumArticleInWU = async (author_scopus_id) => {
+  try {
+    const result = await AuthorScopus.findOne({ author_scopus_id: author_scopus_id });
+
+    let wuDocuments = 0;
+    if (result) {
+      wuDocuments = result.wu_documents;
+    }
+    return wuDocuments;
+  } catch (err) {
+    // console.error('Error finding document:', err);
+    return 0; 
+  }
+};
+
+
+
 const getOldAuthorData = async () => {
   try {
+    oldAuthorData = []
     const authors = await AuthorScopus.find();
     oldAuthorData.push(authors);
+    // console.log("oldAuthorData = ",oldAuthorData)
   } catch (error) {
 
   }
 };
+const getOldNumDocInPage = async (scopus_id) => {
+  try {
+    const author = oldAuthorData[0].find(item => item.author_scopus_id === scopus_id);
+    if (author) {
+      return Number(author.documents);
+    } else {
+      return 0;
+    }
+  } catch (error) {
+    console.error("An error occurred:", error);
+    return 0;
+  }
+};
+
 
 const addCountDocumenInWu = async(scopus_id, documentsInWu) => {
   try {
-    console.log("documentsInWu = ",documentsInWu)
-    console.log("scopus_id= ",scopus_id)
+    // console.log("documentsInWu = ",documentsInWu)
+    // console.log("scopus_id= ",scopus_id)
     const filter = { author_scopus_id : scopus_id };
 
     const updateOperation = { $set: { wu_documents: documentsInWu } };
@@ -43,6 +76,15 @@ const addCountDocumenInWu = async(scopus_id, documentsInWu) => {
   } 
 }
 
+const hasScopusIdInAuthor = async (scopus_id) => {
+  try {
+    const results = await AuthorScopus.find({ author_scopus_id: scopus_id });
+    return results.length > 0;
+  } catch (error) {
+    console.error('Error while querying the database:', error);
+    return false; 
+  }
+};
 
 
 const getCountAuthorScholar = async () => {
@@ -73,19 +115,6 @@ const getCountArticleScholar = async () => {
   }
 };
 
-const getOldNumDocInPage = async (scopus_id) => {
-  try {
-    const author = oldAuthorData[0].find(item => item.author_scopus_id === scopus_id);
-    if (author) {
-      return Number(author.documents);
-    } else {
-      return 0;
-    }
-  } catch (error) {
-    console.error("An error occurred:", error);
-    return 0;
-  }
-};
 
 const checkHasSourceId = async (source_id) => {
   try {
@@ -118,7 +147,7 @@ const updateNewDoc = async (scopus_id, numDocInPage) => {
 };
 
 
-const getNumArticleInDB = async (scopus_id) => {
+const getNumArticleOfAuthorInDB = async (scopus_id) => {
   try {
     const articles = await ArticleScopus.find({ author_scopus_id: scopus_id });
     if (articles.length > 0) {
@@ -252,11 +281,12 @@ const getCiteSourceYearLastestInDb = async (sourceId) => {
     }
   } catch (error) {
     console.error('Error:', error);
+    return null
   }
 }
 
 module.exports = {
-  getNumArticleInDB,
+  getNumArticleOfAuthorInDB,
   getOldNumDocInPage,
   getyearJournal,
   getSourceID,
@@ -271,5 +301,7 @@ module.exports = {
   getCiteSourceYearLastestInDb,
   getCountAuthorScholar,
   getCountArticleScholar,
-  addCountDocumenInWu
+  addCountDocumenInWu,
+  hasScopusIdInAuthor,
+  getOldNumArticleInWU
 };

@@ -125,7 +125,7 @@ const insertDataToDbScholar = async (data) => {
 
 
 
-const insertAuthorDataToDbScopus = async (data,author_name) => {
+const insertAuthorDataToDbScopus = async (data) => {
     try {
         const objectId = new ObjectId();
 
@@ -144,7 +144,7 @@ const insertAuthorDataToDbScopus = async (data,author_name) => {
         });
 
         await newAuthor.save();
-        console.log('\nAuthors Data of '+author_name+' saved successfully to MongoDB.\n');
+        console.log('\nAuthors Data of | ' + data.name + ' saved successfully to MongoDB.\n');
 
     } catch (error) {
         console.error('Error saving Authors data to MongoDB:', error);
@@ -152,7 +152,7 @@ const insertAuthorDataToDbScopus = async (data,author_name) => {
 };
 
 
-const insertArticleDataToDbScopus = async (data) => {
+const insertArticleDataToDbScopus = async (data,author_name) => {
   try {
     let scopus_id 
       const articles = data.map((articleData) => {
@@ -180,7 +180,7 @@ const insertArticleDataToDbScopus = async (data) => {
 
       await ArticleScopus.insertMany(articles);
 
-      console.log('\nArticles Data of | Scopus ID: ' + scopus_id + ' saved successfully to MongoDB.\n');
+      console.log('\nArticles Data of | ' + author_name + ' saved successfully to MongoDB.\n');
       console.log("");
   } catch (error) {
       console.error('Error saving Articles data to MongoDB:', error);
@@ -228,8 +228,8 @@ const updateDataToJournal = async (data, source_id) => {
       ]
     };
   });
-  console.log('mynewdata');
-  newData.forEach(item => console.log(item));
+  // console.log('mynewdata');
+  // newData.forEach(item => console.log(item));
   try {
     const oldData = await Journal.findOne({ source_id });
 
@@ -267,7 +267,7 @@ const updateDataToAuthor = async (data) => {
          }
       }
    )
-   console.log("Author Data | Scopus ID:",  data.author_scopus_id, "updeted successfully to MongoDB.\n");   
+   console.log("Author Data of | ",  data.name, " updeted successfully to MongoDB.\n");   
   } catch (error) {
     // console.error("An error occurred:", error);
   }

@@ -3,21 +3,13 @@ const cheerio = require("cheerio");
 const axios = require("axios");
 const { insertDataToDbScholar} = require("../insertToDb/insertToDb");
 const userAgent = require("user-agents");
-const {   getCountAuthorScholar, getCountArticleScholar } = require("../../qurey/qurey_function");
+
+// const {   getCountAuthorScholar, getCountArticleScholar } = require("../../qurey/qurey_function");
 // process.setMaxListeners(100);
-let numArticle = null;
+
 let linkError = [];
 let url_not = [];
 let url_author;
-
-const requestToWebPage = async (url, page) => {
-  const response = await page.goto(url, { waitUntil: "networkidle2" });
-  if (response.ok) {
-    return page;
-  } else {
-    return "page not response ok";
-  }
-};
 
 const getUserScholarId = async (url) => {
   try {
@@ -127,6 +119,10 @@ const getAuthorAllDetail = async (authorObject, number_author, length) => {
     index: number_author - 1,
   };
   try {
+      linkError = [];
+      url_not = [];
+      url_author;
+
     const browser = await puppeteer.launch({ headless: false });
     const page = await browser.newPage();
     await page.setUserAgent(userAgent.random().toString());
@@ -173,7 +169,6 @@ const getAuthorAllDetail = async (authorObject, number_author, length) => {
       authorAllDetail = await getAuthorDetail(html, url_checked);
       authorAllDetail.articles = await Promise.all(article_detail_promises);
       authorAllDetail.documents = article_detail_promises.length 
-
       if (authorAllDetail) {
           insertDataToDbScholar(authorAllDetail);
       }
@@ -190,7 +185,7 @@ const getAuthorAllDetail = async (authorObject, number_author, length) => {
 
     await browser.close();
 
-    return { all: authorAllDetail, url_not_ready: url_not_ready };
+    return { all: authorAllDetail, url_not_ready: url_not_ready, num: authorAllDetail.documents };
   } catch (error) {
     url_author.message_error = "An error occurred: " + error;
     !linkError.includes(url_author) ? linkError.push(url_author) : null;
@@ -672,6 +667,16 @@ const getArticleDetail = async (html, url,scholar_id) => {
     return null;
   }
 };
+
+const requestToWebPage = async (url, page) => {
+  const response = await page.goto(url, { waitUntil: "networkidle2" });
+  if (response.ok) {
+    return page;
+  } else {
+    return "page not response ok";
+  }
+};
+
 
 const getAuthor = async (author) => {
   try {

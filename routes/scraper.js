@@ -32,6 +32,7 @@ const {
 const { scrapJournal } = require("../scraper/scopus/function_journal");
 process.setMaxListeners(100);
 // const authorURL = require("../scraper/json/scholar");
+const authorURL  = require("../../json/scholar");
 
 (async () => {
   await connectToMongoDB();
@@ -43,17 +44,16 @@ process.setMaxListeners(100);
 
 router.get("/scraper-scopus-cron", async (req, res) => {
   try {
-    console.log("AAAAA = ")
+
     await getOldAuthorData();
     const articleCount = await getCountRecordInArticle();
-    // const now_author = await  getCountRecordInAuthor()
+
     let journalRequest
     const authorRequest = axios.get("http://localhost:8000/scraper/scopus-author");
     const articleRequest = axios.get("http://localhost:8001/scraper/scopus-article");
     if(articleCount !== 0){
       journalRequest = axios.get("http://localhost:8002/scraper/scopus-journal")
     }
-  //articleCount === 0
 
 
     if (articleCount === 0) {
@@ -68,6 +68,9 @@ router.get("/scraper-scopus-cron", async (req, res) => {
 
     res.status(200).json({
       message: "Scraping Data For Scopus Completed Successfully.",
+      authorRequest: authorRequest,
+      articleRequest: articleRequest,
+      journalRequest: journalRequest
     });
   } catch (error) {
     console.error("Cron job error:", error);
@@ -77,17 +80,19 @@ router.get("/scraper-scopus-cron", async (req, res) => {
   }
 });
 
+
 router.get("/scholar", async (req, res) => {
   try {
-    const authorURL = await getURLScholar();
+    let count = 0
+    // const authorURL = await getURLScholar();
     let url_not_ready = [];
     let num_scraping = 0;
     console.log("\nStart Scraping Researcher Data From Google Scholar\n");
     // const batchSize = 60;
-    const batchSize = 5;
+    const batchSize = 10;
     //214 284 585
     // authorURL.length
-    for (let i = 65; i < 70; i += batchSize) {
+    for (let i = 0; i < authorURL.length; i += batchSize) {
       const batchAuthors = authorURL.slice(i, i + batchSize);
       const scrapingPromises = batchAuthors.map((author, index) => {
         const number_author = i + index + 1;
@@ -102,6 +107,7 @@ router.get("/scholar", async (req, res) => {
           if (data.all === false) {
             url_not_ready.push(data.url_not_ready);
           } else {
+            count += data.num
             num_scraping += 1;
           }
         } else if (result.status === "rejected") {
@@ -109,6 +115,7 @@ router.get("/scholar", async (req, res) => {
         }
       });
     }
+    console.log("------ Num All Article : ",count," ------")
     console.log("\nFinish Scraping Author and Article Data From Scholar\n");
 
     res.status(200).json({

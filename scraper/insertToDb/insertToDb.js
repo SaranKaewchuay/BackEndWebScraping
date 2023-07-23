@@ -27,27 +27,12 @@ const insertDataToDbScholar = async (data) => {
         await Promise.all(
           data.articles.map(async (article) => {
             if (article) {
-              const existingArticle = await Article.findOne({ article_id: article.article_id });
+              // const existingArticle = await Article.findOne({ author_id: existingAuthor._id && article_id: article.article_id  });
+              const existingArticle = await Article.findOne({ article_id: article.article_id, scholar_id: existingAuthor.scholar_id });
 
               if (existingArticle) {
-                existingArticle.article_name = article.article_name;
-                existingArticle.authors = article.authors;
-                existingArticle.publication_date = article.publication_date;
-                existingArticle.conference = article.conference;
-                existingArticle.institution = article.institution;
-                existingArticle.journal = article.journal;
-                existingArticle.volume = article.volume;
-                existingArticle.issue = article.issue;
-                existingArticle.pages = article.pages;
-                existingArticle.publisher = article.publisher;
-                existingArticle.description = article.description;
-                existingArticle.total_citations = article.total_citations;
-                existingArticle.url = article.url;
-                existingArticle.author_id = existingAuthor._id;
-                await existingArticle.save();
-              } else {
-                const newArticle = new Article({
-                  article_id: article.article_id,
+                // Update existing article 
+                existingArticle.set({
                   article_name: article.article_name,
                   authors: article.authors,
                   publication_date: article.publication_date,
@@ -63,6 +48,29 @@ const insertDataToDbScholar = async (data) => {
                   url: article.url,
                   author_id: existingAuthor._id,
                 });
+      
+                await existingArticle.save();
+              } else {
+                // Create a new article
+                const newArticle = new Article({
+                  article_id: article.article_id,
+                  article_name: article.article_name,
+                  authors: article.authors,
+                  publication_date: article.publication_date,
+                  conference: article.conference,
+                  institution: article.institution,
+                  journal: article.journal,
+                  volume: article.volume,
+                  issue: article.issue,
+                  pages: article.pages,
+                  publisher: article.publisher,
+                  description: article.description,
+                  total_citations: article.total_citations,
+                  scholar_id: article.scholar_id,
+                  url: article.url,
+                  author_id: existingAuthor._id,
+                });
+                
                 await newArticle.save();
               }
             }

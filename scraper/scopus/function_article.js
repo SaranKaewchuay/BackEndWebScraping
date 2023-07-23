@@ -17,7 +17,7 @@ const {
   getOldNumArticleInWU
 } = require("../../qurey/qurey_function");
 const { scraperJournalData, scrapJournal } = require("./function_journal");
-const allURLs = require("../json/scopus");
+const allURLs = require("../../../json/scopus");
 
 const batchSize = 3;
 //318
@@ -27,7 +27,7 @@ let checkUpdate;
 let checkNotUpdate;
 let errorURLs = [];
 let sourceID = [];
-
+let linkError = [];
 const waitForElement = async (selector, maxAttempts = 10, delay = 200) => {
   let attempts = 0;
   while (attempts < maxAttempts) {
@@ -44,13 +44,9 @@ const waitForElement = async (selector, maxAttempts = 10, delay = 200) => {
 const scraperArticleScopus = async () => {
   try {
     await getOldAuthorData();
-    roundScraping = 0;
-    allArticle = [];
-    errorURLs = [];
-    sourceID = [];
+    
     // const allURLs = await getURLScopus();
     //allURLs.length
-    let linkError = [];
     while (roundScraping < allURLs.length) {
       console.log("\nRound Scraping : ", roundScraping, "\n");
       const batchURLs = allURLs.slice(roundScraping, roundScraping + batchSize);
@@ -91,9 +87,6 @@ const scraperArticleScopus = async () => {
               console.log("\n--------------------------------");
               console.log("First Scraping | ", url.name);
               console.log("--------------------------------");
-              // console.log("numDocinPage =", numDocInPage);
-              // console.log("oldNumDocInPage =", oldNumDocInPage);
-              // console.log("numArticleOfAuthor =", numArticleOfAuthor,"\n");
               const article = await scrapeArticleData(
                 url.url,
                 page,
@@ -123,10 +116,9 @@ const scraperArticleScopus = async () => {
               console.log("\n----------------------------------------------");
               console.log("Scraping Add New Article of ", url.name);
               console.log("----------------------------------------------");
-              console.log("Number Of New Article is ", numNewDoc);
-              console.log("numDocinPage =", numDocInPage);
-              console.log("oldNumDocInPage =", oldNumDocInPage);
-              // console.log("numArticleOfAuthor =",numArticleOfAuthor,"\n");
+              console.log("Number Of New Article : ", numNewDoc);
+              console.log("Number Of New Article In Web Page : ", numDocInPage);
+              console.log("Number Of New Article In Database : ", oldNumDocInPage);
               const article = await scrapeArticleData(
                 url.url,
                 page,
@@ -156,9 +148,8 @@ const scraperArticleScopus = async () => {
               console.log("\n-----------------------------------------------------");
               console.log("Article Of ", url.name, " is not update.");
               console.log("-----------------------------------------------------");
-              console.log("numDocinPage =", numDocInPage);
-              console.log("oldNumDocInPage =", oldNumDocInPage);
-              // console.log("numArticleInDB =", numArticleOfAuthor,"\n");
+              console.log("Number Of New Article In Web Page : ", numDocInPage);
+              console.log("Number Of New Article In Database : ", oldNumDocInPage);
               return {
                 status: "fulfilled",
                 article: [],
@@ -239,8 +230,13 @@ const scraperArticleScopus = async () => {
       roundScraping += batchSize;
     }
 
+    roundScraping = 0;
+    allArticle = [];
+    errorURLs = [];
+    sourceID = [];
+    linkError = [];
     // console.log("Finish Scraping Scopus");
-    return { message: "Finish Scraping Article Scopus", error: linkError };
+    return { message: "Finish Scraping Article Scopus", error: linkError, numScraping: allArticle.length };
   } catch (error) {
     console.error("\nError occurred while scraping\n", error);
     await scraperArticleScopus();
@@ -600,7 +596,6 @@ const getSourceID = async (page, author_scopus_id) => {
             console.error("\n-------------------------");
             console.error("---- Add New Journal ----");
             console.error("-------------------------\n");
-            // const scraperJournalData = async (source_id, numNewJournal, page) => {
             const browser = await puppeteer.launch({ headless: "new" });
             const page = await browser.newPage();
             const link = `https://www.scopus.com/sourceid/${source_id}`;
@@ -612,7 +607,9 @@ const getSourceID = async (page, author_scopus_id) => {
             const data = await scraperJournalData(source_id, 0, page);
             await browser.close();
             await insertDataToJournal(data, source_id);
-          } 
+          } else{
+            console.log("\n---- Journal Data | Source ID: ", source_id ," Duplicate data. ----\n")
+          }
         }else{
             if (!sourceID.includes(source_id)) {
               sourceID.push(source_id);

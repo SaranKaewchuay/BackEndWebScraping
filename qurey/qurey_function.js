@@ -3,6 +3,7 @@ const ArticleScopus = require("../models/ArticleScopus");
 const Author = require("../models/Author");
 const Article = require("../models/Article");
 const Journal = require("../models/journal");
+const Coressponding = require("../models/Coressponding");
 const connectToMongoDB = require("./connectToMongoDB");
 const { MongoClient } = require("mongodb");
 (async () => {
@@ -150,7 +151,6 @@ const updateNewDoc = async (scopus_id, numDocInPage) => {
         }
       }
     );
-    // console.log('Num Document updated successfully!');
   } catch (error) {
     console.error('Error updating document:', error);
   }
@@ -182,11 +182,24 @@ const getyearJournal = async (sourceId) => {
     }
     
   } catch (error) {
-    // console.error(
-    //   "An error occurred while getting year journal from the database:",
-    //   error
-    // );
     return 0;
+  }
+};
+
+const hasSourceEID = async (eid) => {
+  try {
+    const count = await Coressponding.countDocuments({ scopusEID: eid });
+    if (count > 0) {
+      return true;
+    } else {
+      return false;
+    }
+  } catch (error) {
+    console.error(
+      "An error occurred while getting source ID from the database:",
+      error
+    );
+    return false;
   }
 };
 
@@ -234,8 +247,7 @@ const getCountRecordInAuthor = async () => {
         return 0
     }else{
         return num;
-    }
-   
+    }   
   } catch (error) {
     return 0    
   }
@@ -327,5 +339,6 @@ module.exports = {
   addCountDocumenInWu,
   hasScopusIdInAuthor,
   getOldNumArticleInWU,
-  addFieldPageArticle
+  addFieldPageArticle,
+  hasSourceEID
 };

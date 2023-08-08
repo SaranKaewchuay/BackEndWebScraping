@@ -232,12 +232,11 @@ const insertDataToCoressponding = async (data) => {
       });
 
       await newCoressponding.save();
-      console.log("Coressponding Data | Source EID:", data.scopusEID, "saved successfully to MongoDB.\n");
+      console.log("Coressponding Data | Scopus EID:", data.scopusEID, "saved successfully to MongoDB.\n");
   } catch (error) {
       console.error('Error saving data to MongoDB:', error);
   }
 };
-
 
 
 const updateDataToJournal = async (data, source_id) => {
@@ -306,5 +305,6 @@ module.exports = {
     insertArticleDataToDbScopus,
     insertDataToJournal,
     updateDataToJournal,
-    updateDataToAuthor
+    updateDataToAuthor,
+    insertDataToCoressponding
 };

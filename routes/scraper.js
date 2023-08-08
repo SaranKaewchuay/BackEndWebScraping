@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
+const fs = require('fs');
 const {
   getAuthorAllDetail,
-  getURLScholar,
   getAuthorScholar,
   getArticleScholar,
 } = require("../scraper/scholar/function_google_scholar");
@@ -19,7 +19,7 @@ const { scrapOneJournal } = require("../scraper/scopus/function_journal");
 const {
   getOldAuthorData,
   getCountRecordInArticle,
-  getCountRecordInAuthor
+  getCountRecordInAuthor,
 } = require("../qurey/qurey_function");
 const CronJob = require("cron").CronJob;
 const puppeteer = require("puppeteer");
@@ -31,46 +31,48 @@ const {
 } = require("../scraper/scopus/function_article");
 const { scrapJournal } = require("../scraper/scopus/function_journal");
 process.setMaxListeners(100);
-// const authorURL = require("../scraper/json/scholar");
-const authorURL  = require("../../json/scholar");
 
+const { createLogFile,readUrlScholarData } = require("../scraper/scopus/function_Json");
 (async () => {
   await connectToMongoDB();
   await getOldAuthorData();
 })();
+const  authorURL = require("../../json/scholar");
 // const allURLs = require("../scraper/json/scopus");
-
-
 
 router.get("/scraper-scopus-cron", async (req, res) => {
   try {
-
     await getOldAuthorData();
     const articleCount = await getCountRecordInArticle();
 
-    let journalRequest
-    const authorRequest = axios.get("http://localhost:8000/scraper/scopus-author");
-    const articleRequest = axios.get("http://localhost:8001/scraper/scopus-article");
-    if(articleCount !== 0){
-      journalRequest = axios.get("http://localhost:8002/scraper/scopus-journal")
+    let journalRequest;
+    const authorRequest = axios.get(
+      "http://localhost:8000/scraper/scopus-author"
+    );
+    const articleRequest = axios.get(
+      "http://localhost:8001/scraper/scopus-article"
+    );
+    if (articleCount !== 0) {
+      journalRequest = axios.get(
+        "http://localhost:8002/scraper/scopus-journal"
+      );
     }
 
-
     if (articleCount === 0) {
+      console.log("articleCount === 0")
       await Promise.all([authorRequest, articleRequest]);
       setTimeout(() => {
-        axios.get("http://localhost:8002/scraper/scopus-journal")
+        axios.get("http://localhost:8002/scraper/scopus-journal");
       }, 1500);
-     
     } else {
-      await Promise.all([authorRequest, articleRequest,journalRequest]);
+      await Promise.all([authorRequest, articleRequest, journalRequest]);
     }
 
     res.status(200).json({
       message: "Scraping Data For Scopus Completed Successfully.",
       authorRequest: authorRequest,
       articleRequest: articleRequest,
-      journalRequest: journalRequest
+      journalRequest: journalRequest,
     });
   } catch (error) {
     console.error("Cron job error:", error);
@@ -80,11 +82,13 @@ router.get("/scraper-scopus-cron", async (req, res) => {
   }
 });
 
-
 router.get("/scholar", async (req, res) => {
   try {
-    let count = 0
+    let count = 0;
+    const authorURL = await readUrlScholarData()
     // const authorURL = await getURLScholar();
+
+
     let url_not_ready = [];
     let num_scraping = 0;
     console.log("\nStart Scraping Researcher Data From Google Scholar\n");
@@ -107,7 +111,7 @@ router.get("/scholar", async (req, res) => {
           if (data.all === false) {
             url_not_ready.push(data.url_not_ready);
           } else {
-            count += data.num
+            count += data.num;
             num_scraping += 1;
           }
         } else if (result.status === "rejected") {
@@ -115,8 +119,11 @@ router.get("/scholar", async (req, res) => {
         }
       });
     }
-    console.log("------ Num All Article : ",count," ------")
-    console.log("\nFinish Scraping Author and Article Data From Scholar\n");
+    await createLogFile({
+      num_scraping: num_scraping,
+      num_not_ready: url_not_ready.length,
+      url_not_ready: url_not_ready,
+    });
 
     res.status(200).json({
       message: "Successful scraping",
@@ -124,6 +131,10 @@ router.get("/scholar", async (req, res) => {
       num_not_ready: url_not_ready.length,
       url_not_ready: url_not_ready,
     });
+
+    console.log("------ Num All Article : ", count, " ------");
+    console.log("\nFinish Scraping Author and Article Data From Scholar\n");
+    
   } catch (error) {
     console.error(error);
     res.status(500).json({
@@ -136,7 +147,6 @@ router.get("/scopus-data", async (req, res) => {
   try {
     console.log("\nStart Scraping Data From Scopus\n");
 
-    // Execute both scraper functions concurrently
     const [author, article] = await Promise.all([
       scraperAuthorScopus(),
       scraperArticleScopus(),
@@ -158,10 +168,10 @@ router.get("/scopus-data", async (req, res) => {
 
 router.get("/scopus-author", async (req, res) => {
   try {
-    console.log("\nStart Scraping Author Data From Scopus\n");
+    console.log("\n **** Start Scraping Author Data From Scopus **** \n");
     const author = await scraperAuthorScopus();
-    console.log("\nFinish Scraping Author Data From Scopus\n");
-
+    console.log("\n **** Finish Scraping Author Data From Scopus **** \n");
+    console.log("author : ",author)
     res.status(200).json({
       authorScopus: author,
     });
@@ -176,14 +186,13 @@ router.get("/scopus-author", async (req, res) => {
 
 router.get("/scopus-article", async (req, res) => {
   try {
-    console.log("\nStart Scraping Article Data From Scopus\n");
+    console.log("\n **** Start Scraping Article Data From Scopus + **** \n");
     const article = await scraperArticleScopus();
-    console.log("\nFinish Scraping Article Data From Scopus\n");
+    console.log("\n **** Finish Scraping Article Data From Scopus **** \n");
+    console.log("article  : ",article )
 
     res.status(200).json({
-      articleScopus: article.data,
-      all_source_id: sourceID,
-      error_URLS: article.error,
+      articleScopus: article
     });
     return article;
   } catch (error) {
@@ -199,7 +208,7 @@ router.get("/scopus-journal", async (req, res) => {
     // console.log("\nStart Scraping Journal Data From Scopus\n");
     const journal = await scrapJournal();
     // console.log("\nFinish Scraping Journal Data From Scopus\n");
-
+    console.log("journal  : ",journal )
     res.status(200).json({
       journalScopus: journal,
     });

@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 
 const JournalSchema = new mongoose.Schema({
-    _id: String,
     source_id: String,
     journal_name: String,
     scopus_coverage_years: String,

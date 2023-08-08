@@ -1,7 +1,30 @@
 const fs = require('fs');
-
+const path = require('path');
 const filePath = '../../../numDoc/numDocInWalailak.json';
-  
+
+const createLogFile = async (data) => {
+  try {
+    const logDirectory = 'C:/logFile';
+    const logFilePath = path.join(logDirectory, 'logFileGoogleScholar.json');
+
+    // Create the directory if it doesn't exist
+    if (!fs.existsSync(logDirectory)) {
+      fs.mkdirSync(logDirectory, { recursive: true });
+    }
+
+    const jsonData = JSON.stringify(data, null, 2);
+
+    await fs.promises.writeFile(logFilePath, jsonData, 'utf8');
+    console.log('\n-----------------------------------------------------');
+    console.log('JSON file has been successfully created.');
+    console.log('Path: ', logFilePath);
+    console.log('-----------------------------------------------------\n');
+  } catch (err) {
+    console.error('An error occurred while writing the file:', err);
+  }
+};
+
+
 const createJson = async (data) => {
     try {
       let existingData = [];
@@ -68,8 +91,48 @@ const createJson = async (data) => {
       console.error("An error occurred while reading/writing the file:", err);
     }
   };
-  
 
+  const readUrlScholarData = async () => {
+    try {
+      const logDirectory = 'C:/SeminarDemo/json';
+      const logFilePath = path.join(logDirectory, 'scholar.json');
+  
+      // Check if the file exists before attempting to read it
+      if (!fs.existsSync(logFilePath)) {
+        console.log('The log file does not exist.');
+        return null;
+      }
+  
+      const existingJson = await fs.promises.readFile(logFilePath, 'utf8');
+      const authorURL = JSON.parse(existingJson);
+      return authorURL;
+    } catch (err) {
+      console.error('An error occurred while reading the file:', err);
+      return null;
+    }
+  };
+
+  const readUrlScopusData = async () => {
+    try {
+      const logDirectory = 'C:/SeminarDemo/json';
+      const logFilePath = path.join(logDirectory, 'scopus.json');
+  
+      // Check if the file exists before attempting to read it
+      if (!fs.existsSync(logFilePath)) {
+        console.log('The log file does not exist.');
+        return null;
+      }
+  
+      const existingJson = await fs.promises.readFile(logFilePath, 'utf8');
+      const authorURL = JSON.parse(existingJson);
+      return authorURL;
+    } catch (err) {
+      console.error('An error occurred while reading the file:', err);
+      return null;
+    }
+  };
+
+  
   const getNumNotWu = async (scopus_id) => {
     try {
       const data = await fs.promises.readFile(filePath, "utf8");
@@ -93,6 +156,9 @@ module.exports = {
     createJson,
     updateJson,
     getNumNotWu ,
-    createJsonScourceID
+    createJsonScourceID,
+    createLogFile,
+    readUrlScholarData,
+    readUrlScopusData
   };
   

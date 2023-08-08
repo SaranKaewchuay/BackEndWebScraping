@@ -1,6 +1,5 @@
 const AuthorScopus = require("../models/AuthorScopus");
 const ArticleScopus = require("../models/ArticleScopus");
-
 const Author = require("../models/Author");
 const Article = require("../models/Article");
 const Journal = require("../models/journal");
@@ -24,7 +23,6 @@ const getOldNumArticleInWU = async (author_scopus_id) => {
     }
     return wuDocuments;
   } catch (err) {
-    // console.error('Error finding document:', err);
     return 0; 
   }
 };
@@ -41,6 +39,7 @@ const getOldAuthorData = async () => {
 
   }
 };
+
 const getOldNumDocInPage = async (scopus_id) => {
   try {
     const author = oldAuthorData[0].find(item => item.author_scopus_id === scopus_id);
@@ -55,19 +54,14 @@ const getOldNumDocInPage = async (scopus_id) => {
   }
 };
 
-
-const addCountDocumenInWu = async(scopus_id, documentsInWu) => {
+const addCountDocumenInWu = async(scopus_id, documentsInWu ,author_name) => {
   try {
-    // console.log("documentsInWu = ",documentsInWu)
-    // console.log("scopus_id= ",scopus_id)
     const filter = { author_scopus_id : scopus_id };
-
     const updateOperation = { $set: { wu_documents: documentsInWu } };
-
     const result = await AuthorScopus.updateOne(filter, updateOperation);
 
     if (result.modifiedCount > 0) {
-      console.log('Added Count Documen In Wu | Scopus ID : ',scopus_id ,' successfully.');
+      console.log('\nAdded Count Document In Wu Of ',author_name ,' successfully.\n');
     } else {
       console.log('Document not found or no changes made.');
     }
@@ -75,6 +69,22 @@ const addCountDocumenInWu = async(scopus_id, documentsInWu) => {
     console.error('Error occurred:', error);
   } 
 }
+
+const addFieldPageArticle = async (eid, scopus_id, pages) => {
+  try {
+    const filter = { eid: eid, author_scopus_id: scopus_id };
+    const updateOperation = { $set: { pages: pages } };
+    const result = await ArticleScopus.updateOne(filter, updateOperation);
+    if (result.modifiedCount > 0) {
+      console.log('\nAdded article pages of EID | ', eid, ' successfully.\n');
+    } else {
+      console.log('Document not found or no changes were made.');
+    }
+  } catch (error) {
+    console.error('An error occurred:', error.message);
+  }
+};
+
 
 const hasScopusIdInAuthor = async (scopus_id) => {
   try {
@@ -180,7 +190,7 @@ const getyearJournal = async (sourceId) => {
   }
 };
 
-const getSourceID = async (sourceId) => {
+const hasSourceID = async (sourceId) => {
   try {
     const journal = await Journal.findOne({ source_id: sourceId });
     if (journal) {
@@ -196,8 +206,6 @@ const getSourceID = async (sourceId) => {
     return false;
   }
 };
-
-
 
 const getCountRecordInJournal = async () => {
   try {
@@ -285,11 +293,26 @@ const getCiteSourceYearLastestInDb = async (sourceId) => {
   }
 }
 
+const getArticleOfAuthorNotPage = async (scopus_id) => {
+  try {
+    const documents = await ArticleScopus.find(
+      { pages: { $exists: false }, author_scopus_id: scopus_id },
+      { url: 1, _id: 0 }
+    );
+    const urls = documents.map((item) => item.url);
+    return urls
+  } catch (error) {
+    console.error('Error:', error);
+    return null
+  }
+}
+
 module.exports = {
+  getArticleOfAuthorNotPage,
   getNumArticleOfAuthorInDB,
   getOldNumDocInPage,
   getyearJournal,
-  getSourceID,
+  hasSourceID,
   checkHasSourceId,
   updateNewDoc,
   getAllSourceIDJournal,
@@ -303,5 +326,6 @@ module.exports = {
   getCountArticleScholar,
   addCountDocumenInWu,
   hasScopusIdInAuthor,
-  getOldNumArticleInWU
+  getOldNumArticleInWU,
+  addFieldPageArticle
 };

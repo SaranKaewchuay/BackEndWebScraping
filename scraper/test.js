@@ -65,8 +65,6 @@ const insertDataToCoressponding = async (data) => {
         await insertDataToCoressponding(data);
     }else{
         console.log("\nScopus EID | ", data.scopusEID," Is Duplicate\n")
-    }
-
-    
+    }    
   })();
   

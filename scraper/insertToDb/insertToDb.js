@@ -242,20 +242,12 @@ const insertDataToCoressponding = async (data) => {
 const updateDataToJournal = async (data, source_id) => {
   const newData = data.map(item => {
     return {
-      year: item.year,
-      citation: item.citation,
-      category: [
-        {
-          category_name: item.category[0].category_name,
-          sub_category: item.category[0].sub_category,
-          rank: item.category[0].rank,
-          percentile: item.category[0].percentile
-        }
-      ]
+      cite: item.cite,
+      category: item.category
     };
   });
-  // console.log('mynewdata');
-  // newData.forEach(item => console.log(item));
+  console.log('mynewdata : ',newData);
+
   try {
     const oldData = await Journal.findOne({ source_id });
 
@@ -264,7 +256,7 @@ const updateDataToJournal = async (data, source_id) => {
       return;
     }
     oldData.cite_source.push(...newData);
-    oldData.cite_source.sort((a, b) => b.year - a.year);
+    oldData.cite_source.sort((a, b) => b.cite.year - a.cite.year);
     await oldData.save();
 
     console.log("Journal Data | Source ID:", source_id, "updeted successfully to MongoDB.\n");

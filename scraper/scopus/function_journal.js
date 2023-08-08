@@ -97,9 +97,7 @@ const scrapJournal = async (sourceID) => {
             let numNewJournal = 0;
 
             if (hasSource) {
-              const yearDb = Number(
-                await getCiteSourceYearLastestInDb(journalItem)
-              );
+              const yearDb = Number(await getCiteSourceYearLastestInDb(journalItem));
               if (yearDb !== null) {
                 await waitForElement("#year-button > span.ui-selectmenu-text");
                 yearLastestInWebPage =
@@ -128,8 +126,6 @@ const scrapJournal = async (sourceID) => {
                   journal.push(data);
                 }
               }
-
-              console.log("data ====", data);
 
               return {
                 status: "fulfilled",

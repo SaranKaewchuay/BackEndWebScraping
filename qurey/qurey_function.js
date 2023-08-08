@@ -294,7 +294,7 @@ const getCiteSourceYearLastestInDb = async (sourceId) => {
     const document = await Journal.findOne({ source_id: sourceId });
 
     if (document && document.cite_source && document.cite_source.length > 0) {
-      const firstCiteSourceYear = document.cite_source[0].year;
+      const firstCiteSourceYear = document.cite_source[0].cite.year;
       return firstCiteSourceYear
     } else {
       return null

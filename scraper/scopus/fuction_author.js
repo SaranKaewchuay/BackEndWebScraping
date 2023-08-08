@@ -11,6 +11,8 @@ let roundScraping = 0;
 let allAuthors = [];
 let linkError = [];
 
+const baseAuthorUrl = "https://www.scopus.com/authid/detail.uri?authorId="
+
 const scraperAuthorScopus = async () => {
   try {
 
@@ -18,20 +20,24 @@ const scraperAuthorScopus = async () => {
     const allURLs = await getURLScopus();
     
     //allURLs.length
+
     for (let i = roundScraping; i < allURLs.length; i += batchSize) {
       const batchURLs = allURLs.slice(i, i + batchSize);
 
       roundScraping = i;
       console.log("\nRound Scraping : ", roundScraping,"\n");
-      const promises = batchURLs.map(async (url, index) => {
+      const promises = batchURLs.map(async (data, index) => {
         const i = roundScraping + index;
-        console.log(`Scraping Author ${i + 1} of ${allURLs.length}: ${url.name}`);
-        console.log(`URL: ${url.url}`);
+        console.log(`Scraping Author ${i + 1} of ${allURLs.length}: ${data.name}`);
+        const scopusId = await getScopusID(data.url)
+        const author_url = `${baseAuthorUrl}${scopusId}`
+        console.log(`URL: ${author_url}`);
+        
         const browser = await puppeteer.launch({ headless: "new" });
         const page = await browser.newPage();
         try {
           
-          let author_data  = await scrapeAuthorData(url.url, page);
+          let author_data  = await scrapeAuthorData(author_url, page);
           for (const key in author_data) {
             if (author_data[key] === null || author_data[key] === "") {
               author_data = null
@@ -112,7 +118,7 @@ const scraperOneAuthorScopus = async (scopus_id) => {
     console.log("allURLs =", allURLs);
 
     const scrapePromises = allURLs.map(async (id,index) => {
-      const url = `https://www.scopus.com/authid/detail.uri?authorId=${id}`;
+      const url = `${baseAuthorUrl}${id}`;
       // console.log(`Scopus ID: ${id}`);
       console.log(`Scraping Author (${index + 1}/${allURLs.length}): Scopus ID ${id}`);
       const browser = await puppeteer.launch({ headless: false });
@@ -223,6 +229,24 @@ const getURLScopus = async () => {
     return null;
   }
 };
+
+// const getURLScopus = async () => {
+//   try {
+//     const data = await getURL();
+
+//     const scopusArray = data
+//       .map((element) => ({
+//         name: element.TITLEENG + element.FNAMEENG + " " + element.LNAMEENG,
+//         scopusId: element.SCOPUSEID,
+//       }))
+//       .filter((data) => data.scopusId !== "1" && data.scopusId !== "0");
+
+//     return scopusArray;
+//   } catch (error) {
+//     console.error("\nError occurred while scraping\n");
+//     return null;
+//   }
+// };
 
 const scrapCitation = async (url, page) => {
   try {

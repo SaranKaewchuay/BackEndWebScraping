@@ -6,4 +6,4 @@ const CoresspondingSchema = new mongoose.Schema({
   correspondingData : Array
 },{versionKey: false })
 
-module.exports = mongoose.model('Coressponding', CoresspondingSchema)
+module.exports = mongoose.model('Corresponding', CoresspondingSchema)

@@ -2,7 +2,7 @@ const Author = require('../../models/Author');
 const Article = require('../../models/Article');
 const AuthorScopus = require('../../models/AuthorScopus');
 const ArticleScopus = require('../../models/ArticleScopus');
-const Coressponding = require('../../models/Coressponding');
+const Coressponding = require('../../models/Corresponding');
 const Journal = require('../../models/journal.js');
 
 const { ObjectId } = require('mongodb');

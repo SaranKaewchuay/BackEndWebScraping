@@ -458,7 +458,7 @@ const scrapeArticlesBatch = async (
   let lengthArticle = numNewDoc === 0 ? link_Article.length : numNewDoc;
   let sizeLoop = numNewDoc < batchSize && numNewDoc > 0 ? numNewDoc : batchSize;
   let articleCount = 0;
-
+  // roundArticleScraping = 105
   for (let i = roundArticleScraping; i < lengthArticle; i += sizeLoop) {
     const article = [];
     roundArticleScraping = i;
@@ -738,32 +738,44 @@ const getE_Id = async (url) => {
 };
 
 
-const scraperCorresponding = async (html) => {
-  const $ = cheerio.load(html);
-  const data = $("p.corrAuthSect").text().trim().replace(/©.*$/, "");
+const scraperCorresponding = async (html,eid) => {
+  try {
+    const $ = cheerio.load(html);
+    // const pattern = /©.*$/s;
+    const pattern = /©[^]*$/;
+    let data = $("p.corrAuthSect").text().trim().replace(pattern, "");
+    const indexOfFirstCopyright = data.indexOf('©');
+    data = data.substring(0, indexOfFirstCopyright).trim();
 
-  const emails = [];
-  const emailRegex = /([^;]+);[^:]+:([^ ]+)/g;
-  let match;
-  
-  while ((match = emailRegex.exec(data))) {
-    const email = match[2].trim();
-    emails.push(email);
+    const emails = [];
+    const emailRegex = /([^;]+);[^:]+:([^ ]+)/g;
+    let match;
+    while ((match = emailRegex.exec(data))) {
+      const email = match[2].trim();
+      emails.push(email);
+    }
+    const detailsSplitRegex = /email:.+?(?=\s{2}|$)/g;
+    const sections = data.split(detailsSplitRegex).map((str) => str.trim()).filter(Boolean);
+
+    const corresponding = sections.map((str, index) => {
+      const semicolonSplit = str.split(';');
+      const corresName = semicolonSplit[0].trim()
+      const address = semicolonSplit[1].trim()
+      const email = emails[index]
+
+      return { corresName, address, email };
+    });
+
+    return corresponding; 
+  } catch (error) {
+    console.log("Error EID |||| ",eid)
+    console.error("An error occurred:", error);
+    throw error; // Rethrow the error if needed
   }
-  const detailsSplitRegex = /email:.+?(?=\s{2}|$)/g;
-  const sections = data.split(detailsSplitRegex).map((str) => str.trim()).filter(Boolean);
-
-  const corresponding = sections.map((str, index) => {
-    const semicolonSplit = str.split(';');
-    const corresName = semicolonSplit[0].trim();
-    const address = semicolonSplit[1].trim();
-    const email = emails[index];
-
-    return { corresName, address, email };
-  });
-
-  return corresponding; 
 };
+
+
+
 
 
 
@@ -794,7 +806,7 @@ const getArticleDetail = async (page, url, department, author_url) => {
       first_author: coAuthor[0].replace(" *",""),
       co_author: coAuthor,
       co_author_department: await department,
-      corresponding: await scraperCorresponding(html)
+      corresponding: await scraperCorresponding(html,await getE_Id(url))
     };
 
     const detail1 = $("#doc-details-page-container > article > div:nth-child(1) > div > div > span:nth-child(2)").text().split(",").map((item) => item.trim());

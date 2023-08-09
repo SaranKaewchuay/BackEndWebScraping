@@ -7,7 +7,7 @@ const { readUrlScopusData } = require("../scopus/function_Json");
 // const allURLs = require("../../../json/scopus");
 
 const batchSize = 3; 
-let roundScraping = 0;
+let roundScraping = 10;
 let allAuthors = [];
 let linkError = [];
 

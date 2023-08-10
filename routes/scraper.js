@@ -59,7 +59,6 @@ router.get("/scraper-scopus-cron", async (req, res) => {
     }
 
     if (articleCount === 0) {
-      console.log("articleCount === 0")
       await Promise.all([authorRequest, articleRequest]);
       setTimeout(() => {
         axios.get("http://localhost:8002/scraper/scopus-journal");

@@ -4,6 +4,7 @@ const { getURLScopus } = require("./fuction_author");
 const {
   insertArticleDataToDbScopus,
   insertDataToJournal,
+  insertDataToCoressponding,
 } = require("../insertToDb/insertToDb");
 const {
   getOldNumDocInPage,
@@ -15,11 +16,12 @@ const {
   getCountRecordInArticle,
   getCountRecordInJournal,
   getOldNumArticleInWU,
-  addFieldPageArticle
+  addFieldPageArticle,
+  hasSourceEID,
 } = require("../../qurey/qurey_function");
 const { scraperJournalData, scrapJournal } = require("./function_journal");
 // const allURLs = require("../../../json/scopus");
-const { readUrlScopusData } = require("../scopus/function_Json");
+const { readUrlScopusData } = require("./function_Json");
 
 const batchSize = 3;
 let roundScraping = 0;
@@ -31,7 +33,7 @@ let errorURLs = [];
 let sourceID = [];
 let linkError = [];
 
-const baseAuthorUrl = "https://www.scopus.com/authid/detail.uri?authorId="
+const baseAuthorUrl = "https://www.scopus.com/authid/detail.uri?authorId=";
 
 const scraperArticleScopus = async () => {
   try {
@@ -41,7 +43,7 @@ const scraperArticleScopus = async () => {
     const allURLs = await getURLScopus();
 
     //allURLs.length
-    while (roundScraping < allURLs.length) {
+    while (roundScraping < 3) {
       console.log("\nRound Scraping : ", roundScraping, "\n");
       const batchURLs = allURLs.slice(roundScraping, roundScraping + batchSize);
 
@@ -53,14 +55,13 @@ const scraperArticleScopus = async () => {
         const page = await browser.newPage();
 
         try {
-
           console.log(
             `Scraping Author ${roundScraping + index + 1} of ${
               allURLs.length
             }: ${data.name}`
           );
-          const scopusId = await getScopusID(data.url)
-          const author_url = `${baseAuthorUrl}${scopusId}`
+          const scopusId = await getScopusID(data.url);
+          const author_url = `${baseAuthorUrl}${scopusId}`;
           console.log(`URL: ${author_url}`);
 
           const response = await page.goto(author_url, {
@@ -98,7 +99,7 @@ const scraperArticleScopus = async () => {
               );
               article_data = article.article;
               allArticle = allArticle.concat(article_data);
-              
+
               return {
                 status: "fulfilled",
                 article: article_data,
@@ -111,6 +112,8 @@ const scraperArticleScopus = async () => {
               const numNewDoc = numDocInPage - oldNumDocInPage;
               checkNumDoc.numNewDoc = numNewDoc;
 
+              await scraperArticlePageUpdate(scopusId, page);
+
               const article = await scrapeArticleData(
                 author_url,
                 page,
@@ -118,14 +121,13 @@ const scraperArticleScopus = async () => {
                 data.name,
                 checkNumDoc,
                 numDocInPage,
-                checkFirst = false,
+                (checkFirst = false),
                 scopusId
               );
 
               article_data = article.article;
               allArticle = allArticle.concat(article_data);
               // allArticle.push(article_data);
-              await scraperArticlePageUpdate(scopusId, page)
 
               return {
                 status: "fulfilled",
@@ -147,7 +149,7 @@ const scraperArticleScopus = async () => {
               console.log("Number Of Article In Web Page : ", numDocInPage);
               console.log("Number Of Article In Database : ", oldNumDocInPage);
 
-              await scraperArticlePageUpdate(scopusId, page)
+              await scraperArticlePageUpdate(scopusId, page);
 
               return {
                 status: "fulfilled",
@@ -189,7 +191,6 @@ const scraperArticleScopus = async () => {
             if (result.status === "fulfilled") {
               const data = result.value;
               if (data.article.length !== 0 || data.checkUpdate) {
-                
               } else if (data.checkNotUpdate) {
                 continue;
               } else {
@@ -201,7 +202,8 @@ const scraperArticleScopus = async () => {
               return;
             }
           }
-          if ( // เปลี่ยนเป็นเช็คว่าถ้า source มี source id ที่่ ใหม่ ไม่ซ่ำ ส่งไปสกัด
+          if (
+            // เปลี่ยนเป็นเช็คว่าถ้า source มี source id ที่่ ใหม่ ไม่ซ่ำ ส่งไปสกัด
             sourceID.length > 0 &&
             (await getCountRecordInArticle()) > 0 &&
             (await getCountRecordInJournal()) > 0
@@ -225,8 +227,8 @@ const scraperArticleScopus = async () => {
       }
       roundScraping += batchSize;
     }
-    let numScraping = allArticle.length
-    let error = linkError
+    let numScraping = allArticle.length;
+    let error = linkError;
     roundScraping = 0;
     allArticle = [];
     errorURLs = [];
@@ -244,7 +246,8 @@ const scraperArticleScopus = async () => {
   }
 };
 
-const checkStrings = (array, strings) => strings.some((str) => array.includes(str));
+const checkStrings = (array, strings) =>
+  strings.some((str) => array.includes(str));
 
 const mapDataToArticle = async (data, article_data, stringsToCheck) => {
   let [fieldText, fieldValue] = data.split(" ");
@@ -262,55 +265,82 @@ const mapDataToArticle = async (data, article_data, stringsToCheck) => {
 const scraperArticlePageUpdate = async (scopus_id, page) => {
   try {
     const link_Article = await getArticleOfAuthorNotPage(scopus_id);
-    console.log("\nNum Article Not Have Field Page of Scopus ID | ",scopus_id," : ", link_Article.length, "\n");
-    let roundArticleScraping = 0; 
+    console.log(
+      "\nNum Article Not Have Field Page of Scopus ID | ",
+      scopus_id,
+      " : ",
+      link_Article.length,
+      "\n"
+    );
+    let roundArticleScraping = 0;
     const batchSize = 7;
     // let articleCount = 0;
-    for (let i = roundArticleScraping; i < link_Article.length; i += batchSize) {
+    for (
+      let i = roundArticleScraping;
+      i < link_Article.length;
+      i += batchSize
+    ) {
       roundArticleScraping = i;
       const batchUrls = link_Article.slice(i, i + batchSize);
       const promises = batchUrls.map(async (article_url, index) => {
         try {
           const articlePage = await page.browser().newPage();
-          await articlePage.goto(article_url, { waitUntil: "networkidle2" })
+          await articlePage.goto(article_url, { waitUntil: "networkidle2" });
           const html = await articlePage.content();
           const $ = cheerio.load(html);
           // console.log("Article |",i,"| This Article EID : ",await getE_Id(article_url));
-          const detail1 = $("#doc-details-page-container > article > div:nth-child(1) > div > div > span:nth-child(2)").text().split(",").map((item) => item.trim());
-          const detail2 = $("#doc-details-page-container > article > div:nth-child(1) > div > div > span:nth-child(3)").text().split(",").map((item) => item.trim());
+          const detail1 = $(
+            "#doc-details-page-container > article > div:nth-child(1) > div > div > span:nth-child(2)"
+          )
+            .text()
+            .split(",")
+            .map((item) => item.trim());
+          const detail2 = $(
+            "#doc-details-page-container > article > div:nth-child(1) > div > div > span:nth-child(3)"
+          )
+            .text()
+            .split(",")
+            .map((item) => item.trim());
           const stringsToCheck = ["Pages"];
-          let data = []
+          let data = [];
           if (detail1[0] !== "") {
-            data = detail1
+            data = detail1;
           } else if (detail2[0] !== "") {
-            data = detail2
+            data = detail2;
           }
-          const article_data = {} 
+          const article_data = {};
 
           await Promise.all(
-            data.map((data) => mapDataToArticle(data, article_data, stringsToCheck))
+            data.map((data) =>
+              mapDataToArticle(data, article_data, stringsToCheck)
+            )
           );
           const hasPageField = article_data.hasOwnProperty("pages");
-          const eid = await getE_Id(article_url)
-          if(hasPageField){
-            console.log("Article EID | ",eid," Page Update | Pages : ",article_data.pages)
-            await addFieldPageArticle(eid,scopus_id, article_data.pages)
-          }else{
-            console.log("Article EID | ",eid," Page is not update")
+          const eid = await getE_Id(article_url);
+          if (hasPageField) {
+            console.log(
+              "Article EID | ",
+              eid,
+              " Page Update | Pages : ",
+              article_data.pages
+            );
+            await addFieldPageArticle(eid, scopus_id, article_data.pages);
+          } else {
+            console.log("Article EID | ", eid, " Page is not update");
           }
-          
+          await articlePage.close();
         } catch (error) {
           console.error("\nError occurred while scraping\n", error);
+          await articlePage.close();
         }
       });
 
-      await Promise.all(promises); 
+      await Promise.all(promises);
     }
   } catch (error) {
     console.error("\nError occurred while scraping\n", error);
   }
 };
-
 
 const waitForElement = async (selector, maxAttempts = 10, delay = 200) => {
   let attempts = 0;
@@ -324,7 +354,6 @@ const waitForElement = async (selector, maxAttempts = 10, delay = 200) => {
     }
   }
 };
-
 
 const scraperOneArticleScopus = async (eid) => {
   try {
@@ -515,7 +544,8 @@ const scrapeArticlesBatch = async (
             articlePage,
             article_url,
             check.department,
-            url
+            url,
+            false
           );
           articlePage.close();
           return { article: article_data, status: "articleOfWu" };
@@ -550,15 +580,23 @@ const scrapeArticlesBatch = async (
           }
         })
       );
-      if(article.length > 0){
+      if (article.length > 0) {
         await insertArticleDataToDbScopus(
           article,
           author_name,
           roundArticleScraping,
           batchSize
         );
-      }else{
-        console.log('\nArticles '+ (roundArticleScraping+Number(1)) +' to '+ (roundArticleScraping + batchSize +Number(1)) +' of | ' + author_name + ' does not belong to the Walailak Department.\n');
+      } else {
+        console.log(
+          "\nArticles " +
+            (roundArticleScraping + Number(1)) +
+            " to " +
+            (roundArticleScraping + batchSize + Number(1)) +
+            " of | " +
+            author_name +
+            " does not belong to the Walailak Department.\n"
+        );
       }
       roundArticleScraping += batchSize;
     } else {
@@ -603,9 +641,9 @@ const scrapeArticleData = async (
     let html;
 
     if (numNewDoc == 0) {
-      if(numDocInPage > 10){
+      if (numDocInPage > 10) {
         const waitElement2 =
-        "#documents-panel > div > div.Columns-module__FxWfo > div:nth-child(2) > div > els-results-layout > els-paginator > nav > els-select > div > label";
+          "#documents-panel > div > div.Columns-module__FxWfo > div:nth-child(2) > div > els-results-layout > els-paginator > nav > els-select > div > label";
         await waitForElement(waitElement2);
         const waitElement3 =
           "#documents-panel > div > div.Columns-module__FxWfo > div:nth-child(2) > div > els-results-layout > els-paginator > nav > els-select > div > label > select";
@@ -670,13 +708,8 @@ const scrapeArticleData = async (
         );
       } else {
         const articleInWU =
-        Number(await getOldNumArticleInWU(scopus_id)) +
-        article_detail.length;
-        await addCountDocumenInWu(
-          scopus_id,
-          articleInWU,
-          author_name
-        );
+          Number(await getOldNumArticleInWU(scopus_id)) + article_detail.length;
+        await addCountDocumenInWu(scopus_id, articleInWU, author_name);
       }
 
       return { article: article_detail, link_not_wu: link_not_wu };
@@ -694,7 +727,7 @@ const getScopusID = async (url) => {
     const scopusID = match.match(/=(\d+)/)[1];
     return scopusID;
   } catch (error) {
-    console.error("\nError occurred while scraping\n");
+    console.error("\nError occurred while scraping\n", error);
     return null;
   }
 };
@@ -737,51 +770,108 @@ const getE_Id = async (url) => {
   }
 };
 
-
-const scraperCorresponding = async (html,eid) => {
+const scraperCoressId = async (page, url, index, coAuthor) => {
   try {
-    const $ = cheerio.load(html);
-    // const pattern = /©.*$/s;
-    const pattern = /©[^]*$/;
-    let data = $("p.corrAuthSect").text().trim().replace(pattern, "");
-    const indexOfFirstCopyright = data.indexOf('©');
-    data = data.substring(0, indexOfFirstCopyright).trim();
+    let selector;
+    let dataSelector;
+    let exit;
+    const elseIndexNum = index - coAuthor.last_index;
+    const elseIndex = Math.abs(elseIndexNum) + 1;
+    if (coAuthor.hasAdditional) {
+      selector = `#doc-details-page-container > article > div:nth-child(2) > section > div > div > els-collapsible-panel-v2 > section > div > div > ul > li:nth-child(${elseIndex}) > button`;
+      dataSelector = `#doc-details-page-container > article > div:nth-child(2) > section > div > div > els-collapsible-panel-v2 > section > div > div > ul > li:nth-child(${elseIndex}) > div > div > div > div > div > div > div:nth-child(1) > div:nth-child(2) > div > a`;
+      exit = `#doc-details-page-container > article > div:nth-child(2) > section > div:nth-child(2) > div > els-collapsible-panel-v2 > section > div > div > ul > li:nth-child(${elseIndex}) > div > div > div > div > header > div > button`;
+    } else {
+      selector = `#doc-details-page-container > article > div:nth-child(2) > section > div > div > ul > li:nth-child(${
+        index + 1
+      }) > button`;
+      dataSelector = `#doc-details-page-container > article > div:nth-child(2) > section > div > div > ul > li:nth-child(${
+        index + 1
+      }) > div > div > div > div > div > div > div > div:nth-child(2) > div > a`;
+      exit = `#doc-details-page-container > article > div:nth-child(2) > section > div > div > ul > li:nth-child(${
+        index + 1
+      }) > div > div > div > div > header > div > button`;
+    }
 
-    const emails = [];
-    const emailRegex = /([^;]+);[^:]+:([^ ]+)/g;
-    let match;
+    await page.click(selector);
+    await page.waitForTimeout(850);
+    await waitForElement(exit);
+    const html = await page.content();
+    await page.click(exit);
+    await page.waitForTimeout(850);
+
+    const $ = cheerio.load(html);
+    const scopus_url = $(dataSelector).attr("href");
+    const scopus_id = await getScopusID(scopus_url);
+    return scopus_id;
+  } catch (error) {
+    console.error("An error occurred:", error);
+  }
+};
+
+const scraperCorresponding = async (page, html, coAuthor, url) => {
+  let $ = cheerio.load(html);
+  const pattern = /©.*$/s;
+  let data = $("p.corrAuthSect").text().trim().replace(pattern, "");
+  const emails = [];
+  const corresAuthorID = [];
+  const correspondingData = [];
+  const emailRegex = /([^;]+);[^:]+:([^ ]+)/g;
+  let match;
     while ((match = emailRegex.exec(data))) {
       const email = match[2].trim();
       emails.push(email);
     }
+
     const detailsSplitRegex = /email:.+?(?=\s{2}|$)/g;
-    const sections = data.split(detailsSplitRegex).map((str) => str.trim()).filter(Boolean);
+    const sections = data
+      .split(detailsSplitRegex)
+      .map((str) => str.trim())
+      .filter(Boolean);
+    html = await page.content();
+    $ = cheerio.load(html);
+    const backup_page = page;
+    for (let index = 0; index < sections.length; index++) {
+      if (index === 1) {
+        page = backup_page;
+      }
+      const str = sections[index];
+      const semicolonSplit = str.split(";");
+      const corresName = semicolonSplit[0].trim();
+      const address = semicolonSplit[1].trim();
+      const email = emails[index];
 
-    const corresponding = sections.map((str, index) => {
-      const semicolonSplit = str.split(';');
-      const corresName = semicolonSplit[0].trim()
-      const address = semicolonSplit[1].trim()
-      const email = emails[index]
+      const partialString = corresName.replace(".", "");
+      const n = coAuthor.data.findIndex((author) => {
+        // console.log("partialString : ", partialString);
+        // console.log("author : ", author);
+        return author.includes(partialString);
+      });
+      
 
-      return { corresName, address, email };
-    });
-
-    return corresponding; 
-  } catch (error) {
-    console.log("Error EID |||| ",eid)
-    console.error("An error occurred:", error);
-    throw error; // Rethrow the error if needed
-  }
+      if (n !== -1) {
+        const corresFullName = coAuthor.data[n].replace("*", "").trim();
+        const authorID = await scraperCoressId(page, url, n, coAuthor);
+        const corresponding = {
+          corresName: corresName,
+          corresFullName: corresFullName,
+          address: address,
+          email: email,
+        };
+        corresAuthorID.push(authorID);
+        correspondingData.push(corresponding);
+      }
+    }
+  return { corresAuthorID, correspondingData };
 };
 
-
-
-
-
-
-
-
-const getArticleDetail = async (page, url, department, author_url) => {
+const getArticleDetail = async (
+  page,
+  url,
+  department,
+  author_url,
+  oneArticle
+) => {
   try {
     let author_scopus_id;
     if (typeof author_url === "undefined") {
@@ -792,33 +882,62 @@ const getArticleDetail = async (page, url, department, author_url) => {
     await page.click("#show-additional-source-info");
     await page.waitForTimeout(1200);
     const html = await page.content();
-
-    const source_id = await getSourceID(page, author_scopus_id);
-    const check_journal = source_id ? true : false;
     const $ = cheerio.load(html);
-    const  coAuthor = await scrapCo_Author(page)
+
+    const eid = await getE_Id(url);
+    const coAuthor = await scrapCo_Author(page);
+    const corresponding = {}
+    corresponding.scopusEID = eid;
+    const data = await scraperCorresponding(page, html, coAuthor, url);
+    corresponding.corresAuthorID = data.corresAuthorID;
+    corresponding.correspondingData = data.correspondingData;
+    
+    const check = await hasSourceEID(eid);
+    const source_id = await getSourceID(page);
+    const check_journal = source_id ? true : false;
+    //if(!check && oneArticle === false)
+    if (!check && oneArticle === false) {
+      if(corresponding.corresAuthorID.length > 0 && corresponding.correspondingData.length > 0){
+        await insertDataToCoressponding(corresponding);
+      }
+    }
+
     const article_data = {
-      eid: await getE_Id(url),
+      eid: eid,
       name: $(
         "#doc-details-page-container > article > div:nth-child(2) > section > div.row.margin-size-8-t > div > h2 > span"
       ).text(),
       ...(check_journal && { source_id: source_id }),
-      first_author: coAuthor[0].replace(" *",""),
-      co_author: coAuthor,
+      first_author: coAuthor.data[0].replace(" *", ""),
+      co_author: coAuthor.data,
       co_author_department: await department,
-      corresponding: await scraperCorresponding(html,await getE_Id(url))
+      corresponding: corresponding,
     };
 
-    const detail1 = $("#doc-details-page-container > article > div:nth-child(1) > div > div > span:nth-child(2)").text().split(",").map((item) => item.trim());
-    const detail2 = $("#doc-details-page-container > article > div:nth-child(1) > div > div > span:nth-child(3)").text().split(",").map((item) => item.trim());
+    const detail1 = $(
+      "#doc-details-page-container > article > div:nth-child(1) > div > div > span:nth-child(2)"
+    )
+      .text()
+      .split(",")
+      .map((item) => item.trim());
+    const detail2 = $(
+      "#doc-details-page-container > article > div:nth-child(1) > div > div > span:nth-child(3)"
+    )
+      .text()
+      .split(",")
+      .map((item) => item.trim());
     const stringsToCheck = ["Volume", "Issue", "Pages"];
     if (detail1[0] !== "") {
       await Promise.all(
-        detail1.map((data) => mapDataToArticle(data, article_data, stringsToCheck))
+        detail1.map((data) =>
+          mapDataToArticle(data, article_data, stringsToCheck)
+        )
       );
     } else if (detail2[0] !== "") {
       await Promise.all(
-        detail2.map((data) => mapDataToArticle(data, article_data, stringsToCheck))
+        detail2.map((data) =>
+          mapDataToArticle(data, article_data, stringsToCheck)
+        )
       );
     }
 
@@ -860,7 +979,7 @@ const getArticleDetail = async (page, url, department, author_url) => {
     if (author_keywords.length > 0) {
       article_data.author_keywords = author_keywords;
     }
-    
+
     article_data.abstract = $(
       "#doc-details-page-container > article > div:nth-child(4) > section > div > div.margin-size-4-t.margin-size-16-b > p > span"
     ).text();
@@ -873,7 +992,7 @@ const getArticleDetail = async (page, url, department, author_url) => {
   }
 };
 
-const getSourceID = async (page, author_scopus_id) => {
+const getSourceID = async (page) => {
   try {
     const selectorExists = await page.evaluate(() => {
       const element = document.querySelector("#source-preview-flyout");
@@ -938,21 +1057,26 @@ const getSourceID = async (page, author_scopus_id) => {
 
 const scrapCo_Author = async (page) => {
   try {
-
-    await page.evaluate(() => {
+    const hasAdditional = await page.evaluate(() => {
       const showAdditionalAffiliationsButton = document.querySelector(
         "#show-additional-authors"
       );
-      if (showAdditionalAffiliationsButton)
+      if (showAdditionalAffiliationsButton) {
         showAdditionalAffiliationsButton.click();
+      }
+
+      return !!showAdditionalAffiliationsButton;
     });
     await page.waitForTimeout(500);
-    const html = await page.content()
+    const html = await page.content();
     const $ = cheerio.load(html);
     const content = $(
       "#doc-details-page-container > article > div:nth-child(2) > section > div > div > ul > li, #doc-details-page-container > article > div:nth-child(2) > section > div:nth-child(2) > div > els-collapsible-panel-v2 > section > div > div > ul > li"
     );
-    
+    const elementSelector1 =
+      "#doc-details-page-container > article > div:nth-child(2) > section > div > div > ul > li";
+    const elements1 = $(elementSelector1);
+
     const co_author_data = [];
     content.each(function () {
       let co_author_name = $(this).find("button > span").text();
@@ -961,9 +1085,13 @@ const scrapCo_Author = async (page) => {
       }
       co_author_data.push(co_author_name);
     });
-    return co_author_data;
+    return {
+      data: co_author_data,
+      last_index: elements1.length,
+      hasAdditional: hasAdditional,
+    };
   } catch (error) {
-    console.error("\nError occurred while scraping\n");
+    console.error("\nError occurred while scraping\n , ", error);
     return null;
   }
 };

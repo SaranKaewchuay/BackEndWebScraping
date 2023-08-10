@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const CoresspondingSchema = new mongoose.Schema({
   scopusEID : String,
-  corresAuthorID : String,
+  corresAuthorID : Array,
   correspondingData : Array
 },{versionKey: false })
 

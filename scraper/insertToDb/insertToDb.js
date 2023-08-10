@@ -173,7 +173,7 @@ const insertArticleDataToDbScopus = async (data,author_name,roundArticleScraping
           first_author: articleData.first_author,
           co_author: articleData.co_author,
           co_author_department : articleData.co_author_department,
-          corresponding: articleData.corresponding,
+          // corresponding: articleData.corresponding,
           volume: articleData.volume,
           issue: articleData.issue,
           pages: articleData.pages,
@@ -232,7 +232,7 @@ const insertDataToCoressponding = async (data) => {
       });
 
       await newCoressponding.save();
-      console.log("Coressponding Data | Scopus EID:", data.scopusEID, "saved successfully to MongoDB.\n");
+      console.log("\nCoressponding Data | Scopus EID:", data.scopusEID, "saved successfully to MongoDB.\n");
   } catch (error) {
       console.error('Error saving data to MongoDB:', error);
   }

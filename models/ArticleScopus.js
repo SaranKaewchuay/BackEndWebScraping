@@ -7,7 +7,7 @@ const ArticleScopusSchema = new mongoose.Schema({
     first_author: String,
     co_author: Array,
     co_author_department: Array,
-    corresponding: Array,
+    // corresponding: Array,
     volume: String,
     issue: String,
     pages: String,

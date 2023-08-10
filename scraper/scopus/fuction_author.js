@@ -7,7 +7,7 @@ const { readUrlScopusData } = require("../scopus/function_Json");
 // const allURLs = require("../../../json/scopus");
 
 const batchSize = 3; 
-let roundScraping = 10;
+let roundScraping = 0;
 let allAuthors = [];
 let linkError = [];
 
@@ -21,7 +21,7 @@ const scraperAuthorScopus = async () => {
     
     //allURLs.length
 
-    for (let i = roundScraping; i < allURLs.length; i += batchSize) {
+    for (let i = roundScraping; i < 3; i += batchSize) {
       const batchURLs = allURLs.slice(i, i + batchSize);
 
       roundScraping = i;
@@ -230,23 +230,6 @@ const getURLScopus = async () => {
   }
 };
 
-// const getURLScopus = async () => {
-//   try {
-//     const data = await getURL();
-
-//     const scopusArray = data
-//       .map((element) => ({
-//         name: element.TITLEENG + element.FNAMEENG + " " + element.LNAMEENG,
-//         scopusId: element.SCOPUSEID,
-//       }))
-//       .filter((data) => data.scopusId !== "1" && data.scopusId !== "0");
-
-//     return scopusArray;
-//   } catch (error) {
-//     console.error("\nError occurred while scraping\n");
-//     return null;
-//   }
-// };
 
 const scrapCitation = async (url, page) => {
   try {

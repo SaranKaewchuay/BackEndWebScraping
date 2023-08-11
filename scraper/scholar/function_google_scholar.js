@@ -4,9 +4,6 @@ const axios = require("axios");
 const { insertDataToDbScholar} = require("../insertToDb/insertToDb");
 const userAgent = require("user-agents");
 
-// const {   getCountAuthorScholar, getCountArticleScholar } = require("../../qurey/qurey_function");
-// process.setMaxListeners(100);
-
 let linkError = [];
 let url_not = [];
 let url_author;
@@ -123,7 +120,7 @@ const getAuthorAllDetail = async (authorObject, number_author, length) => {
       url_not = [];
       url_author;
 
-    const browser = await puppeteer.launch({ headless: false });
+    const browser = await puppeteer.launch({ headless: "new" });
     const page = await browser.newPage();
     await page.setUserAgent(userAgent.random().toString());
     const scholar_id = await getUserScholarId(authorObject.url)
@@ -282,14 +279,12 @@ const getArticleScholar = async (scholar_id) => {
       console.log(" Scrapin Article of scohalr ID : ",scholar_id);
       console.log("Number of Articles: ", content.length);
 
-      const batchSize = 50; // Set the desired batch size
+      const batchSize = 50; 
 
       const article_detail_promises = [];
-    // console.log("content = ",content)
-      for (let i = 0; i < content.length; i += batchSize) {
-        // console.log(" i = ",i)
-        const batch = content.slice(i, i + batchSize);
 
+      for (let i = 0; i < content.length; i += batchSize) {
+        const batch = content.slice(i, i + batchSize);
         const batch_promises = batch.map(async (article_sub_data) => {
           const detail_page_url = article_sub_data.url;
           return fetchArticleDetail(browser, detail_page_url,scholar_id);
@@ -297,8 +292,6 @@ const getArticleScholar = async (scholar_id) => {
 
         article_detail_promises.push(...batch_promises);
       }
-
-      // authorAllDetail = await getAuthorDetail(html, url_checked);
       articleAll = await Promise.all(article_detail_promises);
 
       console.log("");
@@ -401,10 +394,6 @@ const check_src_image = async (html) => {
       : "https://scholar.googleusercontent.com" + image;
     return src;
   } catch (error) {
-    // url_author.message_error = 'An error occurred: '+ error
-    // !linkError.includes(url_author) ? linkError.push(url_author) : null;
-    // console.log("linkError : ",linkError)
-    // console.error("An error occurred during check_src_image:", error);
     return null;
   }
 };
@@ -412,7 +401,7 @@ const check_src_image = async (html) => {
 const getGraph = async (url) => {
   try {
     let graph = [];
-    const browser = await puppeteer.launch({ headless: false });
+    const browser = await puppeteer.launch({ headless: "new" });
     const page = await browser.newPage();
     await page.setUserAgent(userAgent.random().toString());
 

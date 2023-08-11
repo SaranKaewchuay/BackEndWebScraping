@@ -3,7 +3,6 @@ const cheerio = require("cheerio");
 const { insertDataToJournal } = require("../insertToDb/insertToDb");
 const { updateDataToJournal } = require("../insertToDb/insertToDb");
 const {
-  getyearJournal,
   getCountRecordInJournal,
 } = require("../../qurey/qurey_function");
 const {
@@ -11,6 +10,7 @@ const {
   getAllSourceIDJournal,
   getAllSourceIdOfArticle,
   getCiteSourceYearLastestInDb,
+  pushLogScraping,
 } = require("../../qurey/qurey_function");
 
 const waitForElement = async (selector, maxAttempts = 10, delay = 200) => {
@@ -146,9 +146,8 @@ const scrapJournal = async (sourceID) => {
               );
               if (new_cite_source_year) {
                 updateCiteScoreYear.push(new_cite_source_year);
-                // journal.push(new_cite_source_year);
               }
-              console.log("New Cite Source Year Data : ", new_cite_source_year);
+              console.log("New Cite Source Year Data Of Source ID | ",journalItem," : ", new_cite_source_year);
               return {
                 status: "fulfilled",
                 value: new_cite_source_year,
@@ -247,11 +246,18 @@ const scrapJournal = async (sourceID) => {
     linkError = [];
     journalData = [];
     console.log("\n **** Finish Scraping Journal Data From Scopus **** \n");
-    return {
-      message: "Finish Scraping journal Scopus",
-      error: error,
-      numScraping: numScraping,
-    };
+
+    const logScraping = {
+      message: "Scraping Journal Data For Scopus Completed Successfully.",
+      numJournalScraping: numScraping,
+    }
+    pushLogScraping(logScraping, "journal")
+
+    console.log("\n------------------------------------------------------------------------")
+    console.log("Finsh Scraping journal Data : ", logScraping)
+    console.log("------------------------------------------------------------------------\n")
+
+    return logScraping
   } catch (error) {
     console.error("\nError occurred while scraping\n : ", error);
     await scrapJournal();
@@ -287,8 +293,7 @@ const scrapOneJournal = async (source_id) => {
 
       const promises = batch.map(async (journalItem) => {
         console.log(
-          `Scraping Journal (${
-            roundJournal + 1
+          `Scraping Journal (${roundJournal + 1
           }/${totalJournals}): Source ID ${journalItem}`
         );
 
@@ -375,7 +380,7 @@ const isEmptyOrLengthZero = (value) => {
   );
 };
 
-const scraperJournalData = async (source_id,numNewJournal,page) => {
+const scraperJournalData = async (source_id, numNewJournal, page) => {
   try {
     let html = await page.content();
     const buttonElement = await page.$("#csSubjContainer > button");
@@ -490,16 +495,16 @@ const processDropdowns = async (page, numNewJournal) => {
       }
       const html = await page.content();
       const $ = cheerio.load(html);
-  
+
       const year = $("#year-button > span.ui-selectmenu-text").text();
       const citeScore = $("#rpResult").text();
       const calculatedDate = $("#lastUpdatedTimeStamp")
-      .text()
-      .substring("Calculated on ".length)
-      .replace(",", "");
-      const cite = { year, citeScore, calculatedDate}
+        .text()
+        .substring("Calculated on ".length)
+        .replace(",", "");
+      const cite = { year, citeScore, calculatedDate }
       const category = await scrapCategoryJournal(html);
-   
+
       const data = { cite, category };
       dataCitation.push(data);
     }
@@ -565,5 +570,5 @@ const scrapCategoryJournal = async (html) => {
 module.exports = {
   scrapJournal,
   scraperJournalData,
-  scrapOneJournal,
+  scrapOneJournal
 };

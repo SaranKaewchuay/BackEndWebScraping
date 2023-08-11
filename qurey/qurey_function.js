@@ -6,13 +6,69 @@ const Journal = require("../models/journal");
 const Coressponding = require("../models/Corresponding");
 const connectToMongoDB = require("./connectToMongoDB");
 const { MongoClient } = require("mongodb");
-(async () => {
-
-  await connectToMongoDB();
-
-})();
+const { format } = require('date-fns');
 
 let oldAuthorData = []
+
+let allLogScraping = {
+  author: null,
+  article: null,
+  journal: null
+};
+
+const getNowDateTime = () =>{
+  const currentDate = new Date();
+  const formattedDate = format(currentDate, 'yyyy-MM-dd HH:mm:ss');
+  return formattedDate 
+}
+
+const hasEidOfAuthor = async (eid,scopus_id) => {
+  try {
+    const num = await ArticleScopus.countDocuments({ eid: eid, author_scopus_id: scopus_id });
+    if (num > 0) {
+      return true
+    } else {
+      return false;
+    }
+
+  } catch (error) {
+    return false
+  }
+};
+
+const pushLogScraping = (data, type) => {
+  try {
+    if (type === "author") {
+      
+      allLogScraping.author = {numAuthorScraping : data.numAuthorScraping};
+      allLogScraping.error = data.error
+    } else if (type === "article") {
+      allLogScraping.article = data;
+    } else if (type === "journal") {
+      allLogScraping.journal = data;
+    } 
+    return "success";
+  } catch (err) {
+    return "failure";
+  }
+};
+
+const resetLogScraping = () => {
+  try {
+    allLogScraping = {
+      author: null,
+      article: null,
+      journal: null
+    };
+    return "reset successfully";
+  } catch (err) {
+    return "reset no successfully";
+  }
+};
+
+const getLogScraping = () => {
+  return allLogScraping
+};
 
 const getOldNumArticleInWU = async (author_scopus_id) => {
   try {
@@ -24,11 +80,9 @@ const getOldNumArticleInWU = async (author_scopus_id) => {
     }
     return wuDocuments;
   } catch (err) {
-    return 0; 
+    return 0;
   }
 };
-
-
 
 const getOldAuthorData = async () => {
   try {
@@ -55,20 +109,21 @@ const getOldNumDocInPage = async (scopus_id) => {
   }
 };
 
-const addCountDocumenInWu = async(scopus_id, documentsInWu ,author_name) => {
+
+const addCountDocumenInWu = async (scopus_id, documentsInWu, author_name) => {
   try {
-    const filter = { author_scopus_id : scopus_id };
+    const filter = { author_scopus_id: scopus_id };
     const updateOperation = { $set: { wu_documents: documentsInWu } };
     const result = await AuthorScopus.updateOne(filter, updateOperation);
 
     if (result.modifiedCount > 0) {
-      console.log('\nAdded Count Document In Wu Of ',author_name ,' successfully.\n');
+      console.log('\nAdded Count Document In Wu Of ', author_name, ' successfully.\n');
     } else {
       console.log('Document not found or no changes made.');
     }
   } catch (error) {
     console.error('Error occurred:', error);
-  } 
+  }
 }
 
 const addFieldPageArticle = async (eid, scopus_id, pages) => {
@@ -93,7 +148,7 @@ const hasScopusIdInAuthor = async (scopus_id) => {
     return results.length > 0;
   } catch (error) {
     console.error('Error while querying the database:', error);
-    return false; 
+    return false;
   }
 };
 
@@ -101,28 +156,28 @@ const hasScopusIdInAuthor = async (scopus_id) => {
 const getCountAuthorScholar = async () => {
   try {
     const num = await Author.countDocuments();
-    if(typeof num  === 'undefined'){
-        return 0
-    }else{
-        return num;
+    if (typeof num === 'undefined') {
+      return 0
+    } else {
+      return num;
     }
-   
+
   } catch (error) {
-    return 0    
+    return 0
   }
 };
 
 const getCountArticleScholar = async () => {
   try {
     const num = await Article.countDocuments();
-    if(typeof num  === 'undefined'){
-        return 0
-    }else{
-        return num;
+    if (typeof num === 'undefined') {
+      return 0
+    } else {
+      return num;
     }
-   
+
   } catch (error) {
-    return 0    
+    return 0
   }
 };
 
@@ -130,10 +185,10 @@ const getCountArticleScholar = async () => {
 const checkHasSourceId = async (source_id) => {
   try {
     const journals = await Journal.find({ source_id: source_id });
-    if(journals.length > 0){
-        return true
-    }else{
-        return false
+    if (journals.length > 0) {
+      return true
+    } else {
+      return false
     }
   } catch (error) {
     console.error(error);
@@ -180,7 +235,7 @@ const getyearJournal = async (sourceId) => {
     } else {
       return 0;
     }
-    
+
   } catch (error) {
     return 0;
   }
@@ -233,7 +288,7 @@ const getCountRecordInJournal = async () => {
 const getCountRecordInArticle = async () => {
   try {
     const article = await ArticleScopus.countDocuments();
-    return article ;
+    return article;
   } catch (error) {
 
     throw error;
@@ -243,20 +298,20 @@ const getCountRecordInArticle = async () => {
 const getCountRecordInAuthor = async () => {
   try {
     const num = await AuthorScopus.countDocuments();
-    if(typeof num  === 'undefined'){
-        return 0
-    }else{
-        return num;
-    }   
+    if (typeof num === 'undefined') {
+      return 0
+    } else {
+      return num;
+    }
   } catch (error) {
-    return 0    
+    return 0
   }
 };
 
 const getAllSourceIdOfArticle = async () => {
   try {
     const pipeline = [
-      { $match: { source_id: { $ne: null } } }, 
+      { $match: { source_id: { $ne: null } } },
       { $group: { _id: "$source_id", source_id: { $first: "$source_id" } } },
       { $project: { _id: 0, source_id: 1 } },
     ];
@@ -274,12 +329,12 @@ const getAllSourceIDJournal = async () => {
   try {
     const journal = await Journal.find({}, 'source_id');
     const sourceIds = journal.map(entry => entry.source_id);
-    if(sourceIds){
+    if (sourceIds) {
       return sourceIds
-    }else{
+    } else {
       return []
     }
-    
+
   } catch (error) {
     console.error(
       "An error occurred while getting source ID from the database:",
@@ -340,5 +395,10 @@ module.exports = {
   hasScopusIdInAuthor,
   getOldNumArticleInWU,
   addFieldPageArticle,
-  hasSourceEID
+  hasSourceEID,
+  pushLogScraping,
+  resetLogScraping,
+  getLogScraping,
+  getNowDateTime,
+  hasEidOfAuthor
 };

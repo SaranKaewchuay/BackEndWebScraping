@@ -1,101 +1,119 @@
 const axios = require("axios");
 const puppeteer = require("puppeteer");
 const cheerio = require("cheerio");
-const { insertAuthorDataToDbScopus, updateDataToAuthor  } = require("../insertToDb/insertToDb");
-const { getCountRecordInAuthor,hasScopusIdInAuthor ,getOldAuthorData} = require("../../qurey/qurey_function");
-const { readUrlScopusData } = require("../scopus/function_Json");
-// const allURLs = require("../../../json/scopus");
+const {
+  insertAuthorDataToDbScopus,
+  updateDataToAuthor,
+} = require("../insertToDb/insertToDb");
+const {
+  hasScopusIdInAuthor,
+  pushLogScraping,
+} = require("../../qurey/qurey_function");
+const { getBaseURL } = require("../../qurey/baseURL");
+const getAllScopusAuthIDs  = require("../scopus/getScopusIdFromApi");
 
-const batchSize = 3; 
+const batchSize = 3;
 let roundScraping = 0;
 let allAuthors = [];
 let linkError = [];
 
-const baseAuthorUrl = "https://www.scopus.com/authid/detail.uri?authorId="
-
 const scraperAuthorScopus = async () => {
   try {
+    const baseAuthorUrl = getBaseURL();
+    const allURLs = await getAllScopusAuthIDs();
 
-    // const allURLs = await readUrlScopusData()
-    const allURLs = await getURLScopus();
-    
     //allURLs.length
-
     for (let i = roundScraping; i < 3; i += batchSize) {
       const batchURLs = allURLs.slice(i, i + batchSize);
 
       roundScraping = i;
-      console.log("\nRound Scraping : ", roundScraping,"\n");
+      console.log("\nRound Author Scraping : ", roundScraping, "\n");
       const promises = batchURLs.map(async (data, index) => {
         const i = roundScraping + index;
-        console.log(`Scraping Author ${i + 1} of ${allURLs.length}: ${data.name}`);
-        const scopusId = await getScopusID(data.url)
-        const author_url = `${baseAuthorUrl}${scopusId}`
+        console.log(
+          `Scraping Author ${i + 1} of ${allURLs.length}: ${data.name}`
+        );
+        const scopusId = data.scopus_id
+        const author_url = `${baseAuthorUrl}${scopusId}`;
         console.log(`URL: ${author_url}`);
-        
+
         const browser = await puppeteer.launch({ headless: "new" });
         const page = await browser.newPage();
         try {
-          
-          let author_data  = await scrapeAuthorData(author_url, page);
+          let author_data = await scrapeAuthorData(author_url, page);
           for (const key in author_data) {
             if (author_data[key] === null || author_data[key] === "") {
-              author_data = null
+              author_data = null;
               break;
             }
           }
-          if(author_data !== null){
+          if (author_data !== null) {
             allAuthors.push(author_data);
           }
-          
+
           return { status: "fulfilled", author: author_data };
         } catch (error) {
-          console.error("\nError occurred while scraping\n",error);
+          console.error("\nError occurred while scraping\n", error);
         } finally {
           await browser.close();
         }
       });
 
       const results = await Promise.allSettled(promises);
-      console.log("Num Scraping Finish =", results.length); 
-      // console.log("results = ",results)
-      const mappedResults = results.map(result => result.value.author !== null);
+      const mappedResults = results.map(
+        (result) => result.value.author !== null
+      );
+
       const hasFalse = mappedResults.includes(false);
       const finalResult = !hasFalse;
-      console.log("mappedResults = ",mappedResults)
+      console.log("mappedResults = ", mappedResults);
 
-      if(finalResult){
-        if (results.length === batchSize || results.length === batchURLs.length) {
+      if (finalResult) {
+        if (
+          results.length === batchSize ||
+          results.length === batchURLs.length
+        ) {
           for (const result of results) {
             if (result.status === "fulfilled") {
-              const data = result.value.author; // id เคยมีไหม
+              const data = result.value.author;
               if (await hasScopusIdInAuthor(data.author_scopus_id)) {
-                console.log("\n--------------------------------------------------------")
-                console.log("Update Author Data Of ",data.name)
-                console.log("--------------------------------------------------------")
+                console.log(
+                  "\n--------------------------------------------------------"
+                );
+                console.log("Update Author Data Of ", data.name);
+                console.log(
+                  "--------------------------------------------------------"
+                );
                 await updateDataToAuthor(data);
               } else {
-                console.log("\n--------------------------------------------------------------")
-                console.log("First Scraping Author Of ",data.name)
-                console.log("---------------------------------------------------------------")
+                console.log(
+                  "\n--------------------------------------------------------------"
+                );
+                console.log("First Scraping Author Of ", data.name);
+                console.log(
+                  "---------------------------------------------------------------"
+                );
                 await insertAuthorDataToDbScopus(data);
               }
             } else if (result.status === "rejected") {
               console.error("\nError occurred while scraping\n");
+              allAuthors = [];
               await scraperAuthorScopus();
-              return
+              return;
             }
           }
           roundScraping += batchSize;
         } else {
-          console.log("!== batchsize")
+          console.log("!== batchsize");
+          allAuthors = [];
           await scraperAuthorScopus();
-          return
+          return;
         }
-      }else{
-        console.log("have author null")
+      } else {
+        console.log("have author null");
+        allAuthors = [];
         await scraperAuthorScopus();
-        return
+        return;
       }
     }
     let numScraping = allAuthors.length;
@@ -103,24 +121,41 @@ const scraperAuthorScopus = async () => {
     roundScraping = 0;
     linkError = [];
     allAuthors = [];
-    return { message: "Finish Scraping Author Scopus", error: error, numScraping: numScraping };
 
+    const logScraping = {
+      message: "Scraping Author Data For Scopus Completed Successfully.",
+      numAuthorScraping: numScraping,
+      error: error,
+    };
+    pushLogScraping(logScraping, "author");
+    console.log(
+      "\n----------------------------------------------------------------------"
+    );
+    console.log("Finsh Scraping Author Data : ", logScraping);
+    console.log(
+      "----------------------------------------------------------------------\n"
+    );
+
+    return logScraping;
   } catch (error) {
-      console.error("\nError occurred while scraping\n",error);
-      await scraperAuthorScopus();
-      return
+    console.error("\nError occurred while scraping\n", error);
+    allAuthors = [];
+    await scraperAuthorScopus();
+    return;
+  }
 };
-}
 
 const scraperOneAuthorScopus = async (scopus_id) => {
   try {
-    const allURLs = scopus_id.split(",").map(e => e.trim());
+    const baseAuthorUrl = getBaseURL();
+    const allURLs = scopus_id.split(",").map((e) => e.trim());
     console.log("allURLs =", allURLs);
 
-    const scrapePromises = allURLs.map(async (id,index) => {
+    const scrapePromises = allURLs.map(async (id, index) => {
       const url = `${baseAuthorUrl}${id}`;
-      // console.log(`Scopus ID: ${id}`);
-      console.log(`Scraping Author (${index + 1}/${allURLs.length}): Scopus ID ${id}`);
+      console.log(
+        `Scraping Author (${index + 1}/${allURLs.length}): Scopus ID ${id}`
+      );
       const browser = await puppeteer.launch({ headless: false });
       const page = await browser.newPage();
       try {
@@ -129,7 +164,7 @@ const scraperOneAuthorScopus = async (scopus_id) => {
         return author;
       } catch (error) {
         console.error("Error occurred while scraping:", error);
-        throw error; // Rethrow the error to trigger catch block in scraperOneAuthorScopus
+        throw error;
       } finally {
         await browser.close();
       }
@@ -158,13 +193,14 @@ const waitForElement = async (selector, maxAttempts = 10, delay = 200) => {
   }
 };
 
-
 const scrapeAuthorData = async (url, page) => {
   try {
     const response = await page.goto(url, { waitUntil: "networkidle2" });
-    if(response.ok()){
-      await page.waitForTimeout(1700)
-      await waitForElement("#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > section > div > div:nth-child(2) > div > div > div:nth-child(1) > span.Typography-module__lVnit.Typography-module__ix7bs.Typography-module__Nfgvc")
+    if (response.ok()) {
+      await page.waitForTimeout(1700);
+      await waitForElement(
+        "#scopus-author-profile-page-control-microui__general-information-content > div.Col-module__hwM1N.offset-lg-2 > section > div > div:nth-child(2) > div > div > div:nth-child(1) > span.Typography-module__lVnit.Typography-module__ix7bs.Typography-module__Nfgvc"
+      );
       const html = await page.content();
       const $ = cheerio.load(html);
       const author = {
@@ -190,40 +226,10 @@ const scrapeAuthorData = async (url, page) => {
         url: url,
       };
       return author;
-    }else{
-      linkError.push(url)
-      return
+    } else {
+      linkError.push(url);
+      return;
     }
-  } catch (error) {
-      console.error("\nError occurred while scraping\n");
-      return null;
-  }
-};
-
-const getURL = async () => {
-  try {
-    const response = await axios.get(
-      "https://iriedoc.wu.ac.th/data/apiwris/RPS_PERSON.php"
-    );
-    return response.data;
-  } catch (error) {
-    console.error("\nError occurred while scraping\n");
-    return null;
-  }
-};
-
-const getURLScopus = async () => {
-  try {
-    const data = await getURL();
-
-    const scopusArray = data
-      .map((element) => ({
-        name: element.TITLEENG + element.FNAMEENG + " " + element.LNAMEENG,
-        url: element.SCOPUSURL,
-      }))
-      .filter((data) => data.url !== "1" && data.url !== "0");
-
-    return scopusArray;
   } catch (error) {
     console.error("\nError occurred while scraping\n");
     return null;
@@ -318,6 +324,36 @@ const scrapSubjectArea = async (page) => {
       subjectArea[i] = sub;
     }
     return subjectArea;
+  } catch (error) {
+    console.error("\nError occurred while scraping\n");
+    return null;
+  }
+};
+
+const getURL = async () => {
+  try {
+    const response = await axios.get(
+      "https://iriedoc.wu.ac.th/data/apiwris/RPS_PERSON.php"
+    );
+    return response.data;
+  } catch (error) {
+    console.error("\nError occurred while scraping\n");
+    return null;
+  }
+};
+
+const getURLScopus = async () => {
+  try {
+    const data = await getURL();
+
+    const scopusArray = data
+      .map((element) => ({
+        name: element.TITLEENG + element.FNAMEENG + " " + element.LNAMEENG,
+        url: element.SCOPUSURL,
+      }))
+      .filter((data) => data.url !== "1" && data.url !== "0");
+
+    return scopusArray;
   } catch (error) {
     console.error("\nError occurred while scraping\n");
     return null;

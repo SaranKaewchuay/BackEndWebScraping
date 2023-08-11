@@ -1,6 +1,5 @@
 const puppeteer = require("puppeteer");
 const cheerio = require("cheerio");
-const { getURLScopus } = require("./fuction_author");
 const {
   insertArticleDataToDbScopus,
   insertDataToJournal,
@@ -8,7 +7,6 @@ const {
 } = require("../insertToDb/insertToDb");
 const {
   getOldNumDocInPage,
-  getOldAuthorData,
   getNumArticleOfAuthorInDB,
   checkHasSourceId,
   getArticleOfAuthorNotPage,
@@ -18,10 +16,13 @@ const {
   getOldNumArticleInWU,
   addFieldPageArticle,
   hasSourceEID,
+  hasEidOfAuthor,
+  pushLogScraping,
+  
 } = require("../../qurey/qurey_function");
 const { scraperJournalData, scrapJournal } = require("./function_journal");
-// const allURLs = require("../../../json/scopus");
-const { readUrlScopusData } = require("./function_Json");
+const { getBaseURL } = require('../../qurey/baseURL')
+const getAllScopusAuthIDs  = require("./getScopusIdFromApi");
 
 const batchSize = 3;
 let roundScraping = 0;
@@ -33,18 +34,14 @@ let errorURLs = [];
 let sourceID = [];
 let linkError = [];
 
-const baseAuthorUrl = "https://www.scopus.com/authid/detail.uri?authorId=";
-
 const scraperArticleScopus = async () => {
   try {
-    await getOldAuthorData();
-
-    // const allURLs = await readUrlScopusData();
-    const allURLs = await getURLScopus();
+    const baseAuthorUrl = getBaseURL();
+    const allURLs = await getAllScopusAuthIDs()
 
     //allURLs.length
     while (roundScraping < 3) {
-      console.log("\nRound Scraping : ", roundScraping, "\n");
+      console.log("\nRound Article Scraping : ", roundScraping, "\n");
       const batchURLs = allURLs.slice(roundScraping, roundScraping + batchSize);
 
       const batchPromises = batchURLs.map(async (data, index) => {
@@ -56,11 +53,10 @@ const scraperArticleScopus = async () => {
 
         try {
           console.log(
-            `Scraping Author ${roundScraping + index + 1} of ${
-              allURLs.length
+            `Scraping Author ${roundScraping + index + 1} of ${allURLs.length
             }: ${data.name}`
           );
-          const scopusId = await getScopusID(data.url);
+          const scopusId = data.scopus_id
           const author_url = `${baseAuthorUrl}${scopusId}`;
           console.log(`URL: ${author_url}`);
 
@@ -95,7 +91,8 @@ const scraperArticleScopus = async () => {
                 checkNumDoc,
                 numDocInPage,
                 checkFirst,
-                scopusId
+                scopusId,
+                false
               );
               article_data = article.article;
               allArticle = allArticle.concat(article_data);
@@ -112,7 +109,7 @@ const scraperArticleScopus = async () => {
               const numNewDoc = numDocInPage - oldNumDocInPage;
               checkNumDoc.numNewDoc = numNewDoc;
 
-              await scraperArticlePageUpdate(scopusId, page);
+              // await scraperArticlePageUpdate(scopusId, page);
 
               const article = await scrapeArticleData(
                 author_url,
@@ -122,7 +119,8 @@ const scraperArticleScopus = async () => {
                 checkNumDoc,
                 numDocInPage,
                 (checkFirst = false),
-                scopusId
+                scopusId,
+                false
               );
 
               article_data = article.article;
@@ -149,7 +147,7 @@ const scraperArticleScopus = async () => {
               console.log("Number Of Article In Web Page : ", numDocInPage);
               console.log("Number Of Article In Database : ", oldNumDocInPage);
 
-              await scraperArticlePageUpdate(scopusId, page);
+              // await scraperArticlePageUpdate(scopusId, page);
 
               return {
                 status: "fulfilled",
@@ -234,11 +232,17 @@ const scraperArticleScopus = async () => {
     errorURLs = [];
     sourceID = [];
     linkError = [];
-    return {
-      message: "Finish Scraping Article Scopus",
-      error: error,
-      numScraping: numScraping,
-    };
+
+
+    const logScraping = {
+      message: "Scraping Article Data For Scopus Completed Successfully.",
+      numArticleScraping: numScraping,
+    }
+    pushLogScraping(logScraping, "article")
+    console.log("\n----------------------------------------------------------------------")
+    console.log("Finsh Scraping Article Data : ", logScraping)
+    console.log("----------------------------------------------------------------------\n")
+    return logScraping
   } catch (error) {
     console.error("\nError occurred while scraping\n", error);
     await scraperArticleScopus();
@@ -274,7 +278,6 @@ const scraperArticlePageUpdate = async (scopus_id, page) => {
     );
     let roundArticleScraping = 0;
     const batchSize = 7;
-    // let articleCount = 0;
     for (
       let i = roundArticleScraping;
       i < link_Article.length;
@@ -288,7 +291,6 @@ const scraperArticlePageUpdate = async (scopus_id, page) => {
           await articlePage.goto(article_url, { waitUntil: "networkidle2" });
           const html = await articlePage.content();
           const $ = cheerio.load(html);
-          // console.log("Article |",i,"| This Article EID : ",await getE_Id(article_url));
           const detail1 = $(
             "#doc-details-page-container > article > div:nth-child(1) > div > div > span:nth-child(2)"
           )
@@ -374,8 +376,7 @@ const scraperOneArticleScopus = async (eid) => {
       const promises = batchEid.map(async (id, index) => {
         articleCount++;
         console.log(
-          `Scraping Article Of Author (${index + 1}/${
-            all_eid.length
+          `Scraping Article Of Author (${index + 1}/${all_eid.length
           }): Scopus ID ${id}`
         );
         const page = await browser.newPage();
@@ -426,7 +427,7 @@ const getDocumentInpage = async (html) => {
 
     return Number(numDoc);
   } catch (error) {
-    console.error("\nError occurred while scraping\n");
+    console.error("\nError occurred while scraping\n", error);
     return null;
   }
 };
@@ -467,7 +468,7 @@ const checkArticleWU = async (page) => {
       department: found ? department : undefined,
     };
   } catch (error) {
-    console.error("\nError occurred while scraping\n");
+    console.error("\nError occurred while scraping\n", error);
     return null;
   }
 };
@@ -479,7 +480,8 @@ const scrapeArticlesBatch = async (
   author_name,
   url,
   roundArticleScraping,
-  article_detail
+  article_detail,
+  oneArticle
 ) => {
   const batchSize = 7;
   const link_not_wu = [];
@@ -487,7 +489,7 @@ const scrapeArticlesBatch = async (
   let lengthArticle = numNewDoc === 0 ? link_Article.length : numNewDoc;
   let sizeLoop = numNewDoc < batchSize && numNewDoc > 0 ? numNewDoc : batchSize;
   let articleCount = 0;
-  // roundArticleScraping = 105
+
   for (let i = roundArticleScraping; i < lengthArticle; i += sizeLoop) {
     const article = [];
     roundArticleScraping = i;
@@ -504,6 +506,7 @@ const scrapeArticlesBatch = async (
         ]);
 
         const check = await checkArticleWU(articlePage);
+        const eid = await getE_Id(article_url)
         articleCount++;
         if (numNewDoc === 0) {
           if (check.status) {
@@ -511,14 +514,14 @@ const scrapeArticlesBatch = async (
               "Article |",
               articleCount,
               "| This Article EID : ",
-              await getE_Id(article_url)
+              eid
             );
           } else {
             console.log(
               "Article |",
               articleCount,
               "| This Article EID : ",
-              await getE_Id(article_url),
+              eid,
               " does not belong to the Walailak Department."
             );
           }
@@ -527,7 +530,7 @@ const scrapeArticlesBatch = async (
             "Article |",
             articleCount,
             "| Add New Article EID : ",
-            await getE_Id(article_url),
+            eid,
             " of ",
             author_name
           );
@@ -538,14 +541,16 @@ const scrapeArticlesBatch = async (
           articlePage.close();
           return { article: {}, status: "skip" };
         }
-
-        if (check.status) {
+        const scopus_id = await getScopusID(url)
+        const hasEidAuthor = await hasEidOfAuthor(eid,scopus_id)
+        
+        if (check.status && (typeof oneArticle === "undefined" || hasEidAuthor === false)) {
           const article_data = await getArticleDetail(
             articlePage,
             article_url,
             check.department,
             url,
-            false
+            oneArticle
           );
           articlePage.close();
           return { article: article_data, status: "articleOfWu" };
@@ -554,9 +559,9 @@ const scrapeArticlesBatch = async (
           return { article: {}, status: "skip" };
         }
       } catch (error) {
-        console.error("Failed to scrape article:", error);
+        console.error("Failed to scrape article ");
         articlePage.close();
-        return null;
+        return { article: null };
       }
     });
 
@@ -580,7 +585,8 @@ const scrapeArticlesBatch = async (
           }
         })
       );
-      if (article.length > 0) {
+     
+      if (article.length > 0 && oneArticle === false) {
         await insertArticleDataToDbScopus(
           article,
           author_name,
@@ -590,12 +596,12 @@ const scrapeArticlesBatch = async (
       } else {
         console.log(
           "\nArticles " +
-            (roundArticleScraping + Number(1)) +
-            " to " +
-            (roundArticleScraping + batchSize + Number(1)) +
-            " of | " +
-            author_name +
-            " does not belong to the Walailak Department.\n"
+          (roundArticleScraping + Number(1)) +
+          " to " +
+          (roundArticleScraping + batchSize + Number(1)) +
+          " of | " +
+          author_name +
+          " does not belong to the Walailak Department.\n"
         );
       }
       roundArticleScraping += batchSize;
@@ -607,7 +613,8 @@ const scrapeArticlesBatch = async (
         author_name,
         url,
         roundArticleScraping,
-        article_detail
+        article_detail,
+        oneArticle
       );
       return;
     }
@@ -631,7 +638,8 @@ const scrapeArticleData = async (
   checkNumDoc,
   numDocInPage,
   checkFirst,
-  scopus_id
+  scopus_id,
+  oneArticle
 ) => {
   try {
     await page.waitForSelector("#preprints");
@@ -659,7 +667,7 @@ const scrapeArticleData = async (
     html = await page.content();
 
     let link_Article = await getArticleUrl(html, numNewDoc);
-
+    // console.log("link_Article : ",link_Article)
     if (link_Article.length === 0) {
       console.log("Catch 1111 **");
     } else {
@@ -697,7 +705,8 @@ const scrapeArticleData = async (
         author_name,
         url,
         roundArticleScraping,
-        article_detail
+        article_detail,
+        oneArticle
       );
 
       if (checkFirst) {
@@ -715,8 +724,7 @@ const scrapeArticleData = async (
       return { article: article_detail, link_not_wu: link_not_wu };
     }
   } catch (error) {
-    console.error("\nError occurred while scraping\n");
-    console.error("---- Article Error ----", error);
+    console.error("\nError occurred while scraping\n", error);
     return { article: null, link_not_wu: null };
   }
 };
@@ -782,15 +790,12 @@ const scraperCoressId = async (page, url, index, coAuthor) => {
       dataSelector = `#doc-details-page-container > article > div:nth-child(2) > section > div > div > els-collapsible-panel-v2 > section > div > div > ul > li:nth-child(${elseIndex}) > div > div > div > div > div > div > div:nth-child(1) > div:nth-child(2) > div > a`;
       exit = `#doc-details-page-container > article > div:nth-child(2) > section > div:nth-child(2) > div > els-collapsible-panel-v2 > section > div > div > ul > li:nth-child(${elseIndex}) > div > div > div > div > header > div > button`;
     } else {
-      selector = `#doc-details-page-container > article > div:nth-child(2) > section > div > div > ul > li:nth-child(${
-        index + 1
-      }) > button`;
-      dataSelector = `#doc-details-page-container > article > div:nth-child(2) > section > div > div > ul > li:nth-child(${
-        index + 1
-      }) > div > div > div > div > div > div > div > div:nth-child(2) > div > a`;
-      exit = `#doc-details-page-container > article > div:nth-child(2) > section > div > div > ul > li:nth-child(${
-        index + 1
-      }) > div > div > div > div > header > div > button`;
+      selector = `#doc-details-page-container > article > div:nth-child(2) > section > div > div > ul > li:nth-child(${index + 1
+        }) > button`;
+      dataSelector = `#doc-details-page-container > article > div:nth-child(2) > section > div > div > ul > li:nth-child(${index + 1
+        }) > div > div > div > div > div > div > div > div:nth-child(2) > div > a`;
+      exit = `#doc-details-page-container > article > div:nth-child(2) > section > div > div > ul > li:nth-child(${index + 1
+        }) > div > div > div > div > header > div > button`;
     }
 
     await page.click(selector);
@@ -818,50 +823,48 @@ const scraperCorresponding = async (page, html, coAuthor, url) => {
   const correspondingData = [];
   const emailRegex = /([^;]+);[^:]+:([^ ]+)/g;
   let match;
-    while ((match = emailRegex.exec(data))) {
-      const email = match[2].trim();
-      emails.push(email);
+  while ((match = emailRegex.exec(data))) {
+    const email = match[2].trim();
+    emails.push(email);
+  }
+
+  const detailsSplitRegex = /email:.+?(?=\s{2}|$)/g;
+  const sections = data
+    .split(detailsSplitRegex)
+    .map((str) => str.trim())
+    .filter(Boolean);
+  html = await page.content();
+  $ = cheerio.load(html);
+  const backup_page = page;
+  for (let index = 0; index < sections.length; index++) {
+    if (index === 1) {
+      page = backup_page;
     }
+    const str = sections[index];
+    const semicolonSplit = str.split(";");
+    const corresName = semicolonSplit[0].trim();
+    const address = semicolonSplit[1].trim();
+    const email = emails[index];
 
-    const detailsSplitRegex = /email:.+?(?=\s{2}|$)/g;
-    const sections = data
-      .split(detailsSplitRegex)
-      .map((str) => str.trim())
-      .filter(Boolean);
-    html = await page.content();
-    $ = cheerio.load(html);
-    const backup_page = page;
-    for (let index = 0; index < sections.length; index++) {
-      if (index === 1) {
-        page = backup_page;
-      }
-      const str = sections[index];
-      const semicolonSplit = str.split(";");
-      const corresName = semicolonSplit[0].trim();
-      const address = semicolonSplit[1].trim();
-      const email = emails[index];
+    const partialString = corresName.replace(".", "");
+    const n = coAuthor.data.findIndex((author) => {
+      return author.includes(partialString);
+    });
 
-      const partialString = corresName.replace(".", "");
-      const n = coAuthor.data.findIndex((author) => {
-        // console.log("partialString : ", partialString);
-        // console.log("author : ", author);
-        return author.includes(partialString);
-      });
-      
 
-      if (n !== -1) {
-        const corresFullName = coAuthor.data[n].replace("*", "").trim();
-        const authorID = await scraperCoressId(page, url, n, coAuthor);
-        const corresponding = {
-          corresName: corresName,
-          corresFullName: corresFullName,
-          address: address,
-          email: email,
-        };
-        corresAuthorID.push(authorID);
-        correspondingData.push(corresponding);
-      }
+    if (n !== -1) {
+      const corresFullName = coAuthor.data[n].replace("*", "").trim();
+      const authorID = await scraperCoressId(page, url, n, coAuthor);
+      const corresponding = {
+        corresName: corresName,
+        corresFullName: corresFullName,
+        address: address,
+        email: email,
+      };
+      corresAuthorID.push(authorID);
+      correspondingData.push(corresponding);
     }
+  }
   return { corresAuthorID, correspondingData };
 };
 
@@ -891,13 +894,13 @@ const getArticleDetail = async (
     const data = await scraperCorresponding(page, html, coAuthor, url);
     corresponding.corresAuthorID = data.corresAuthorID;
     corresponding.correspondingData = data.correspondingData;
-    
+
     const check = await hasSourceEID(eid);
     const source_id = await getSourceID(page);
     const check_journal = source_id ? true : false;
-    //if(!check && oneArticle === false)
+
     if (!check && oneArticle === false) {
-      if(corresponding.corresAuthorID.length > 0 && corresponding.correspondingData.length > 0){
+      if (corresponding.corresAuthorID.length > 0 && corresponding.correspondingData.length > 0) {
         await insertDataToCoressponding(corresponding);
       }
     }
@@ -1116,10 +1119,8 @@ const scrapAuthorKeyword = async (html) => {
 
 module.exports = {
   scraperArticleScopus,
-  sourceID,
-  errorURLs,
   getArticleUrl,
   scraperOneArticleScopus,
   scrapeArticleData,
-  getArticleDetail,
+  getArticleDetail
 };

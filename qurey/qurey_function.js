@@ -8,7 +8,7 @@ const connectToMongoDB = require("./connectToMongoDB");
 const { MongoClient } = require("mongodb");
 const { format } = require('date-fns');
 
-let oldAuthorData = []
+
 
 let allLogScraping = {
   author: null,
@@ -84,6 +84,8 @@ const getOldNumArticleInWU = async (author_scopus_id) => {
   }
 };
 
+let oldAuthorData = []
+
 const getOldAuthorData = async () => {
   try {
     oldAuthorData = []
@@ -110,21 +112,46 @@ const getOldNumDocInPage = async (scopus_id) => {
 };
 
 
-const addCountDocumenInWu = async (scopus_id, documentsInWu, author_name) => {
+const addCountDocumentInWu = async (scopusId, documentsInWu, authorName) => {
   try {
-    const filter = { author_scopus_id: scopus_id };
+    const filter = { author_scopus_id: scopusId };
     const updateOperation = { $set: { wu_documents: documentsInWu } };
     const result = await AuthorScopus.updateOne(filter, updateOperation);
 
     if (result.modifiedCount > 0) {
-      console.log('\nAdded Count Document In Wu Of ', author_name, ' successfully.\n');
+      console.log(`Added count of documents in Wu for ${authorName} successfully.`);
     } else {
-      console.log('Document not found or no changes made.');
+      const zeroDocumentFilter = { author_scopus_id: scopusId, wu_documents: 0 };
+      const zeroDocumentUpdate = { $set: { wu_documents: documentsInWu } };
+      const zeroDocumentResult = await AuthorScopus.updateOne(zeroDocumentFilter, zeroDocumentUpdate);
+
+      if (zeroDocumentResult.modifiedCount > 0) {
+        console.log(`Updated wu_documents to ${documentsInWu} for ${authorName} successfully.`);
+      } else {
+        console.log('Document not found or no changes made.');
+      }
     }
   } catch (error) {
-    console.error('Error occurred:', error);
+    console.error('An error occurred:', error);
   }
 }
+
+
+// const addCountDocumenInWu = async (scopus_id, documentsInWu, author_name) => {
+//   try {
+//     const filter = { author_scopus_id: scopus_id };
+//     const updateOperation = { $set: { wu_documents: documentsInWu } };
+//     const result = await AuthorScopus.updateOne(filter, updateOperation);
+
+//     if (result.modifiedCount > 0) {
+//       console.log('\nAdded Count Document In Wu Of ', author_name, ' successfully.\n');
+//     } else {
+//       console.log('Document not found or no changes made.');
+//     }
+//   } catch (error) {
+//     console.error('Error occurred:', error);
+//   }
+// }
 
 const addFieldPageArticle = async (eid, scopus_id, pages) => {
   try {
@@ -290,8 +317,7 @@ const getCountRecordInArticle = async () => {
     const article = await ArticleScopus.countDocuments();
     return article;
   } catch (error) {
-
-    throw error;
+    return 0
   }
 };
 
@@ -391,7 +417,7 @@ module.exports = {
   getCiteSourceYearLastestInDb,
   getCountAuthorScholar,
   getCountArticleScholar,
-  addCountDocumenInWu,
+  addCountDocumentInWu,
   hasScopusIdInAuthor,
   getOldNumArticleInWU,
   addFieldPageArticle,

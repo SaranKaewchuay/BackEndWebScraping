@@ -8,9 +8,9 @@ const {
 const {
   hasScopusIdInAuthor,
   pushLogScraping,
-} = require("../../qurey/qurey_function");
+} = require("../../qurey/qurey_function")
 const { getBaseURL } = require("../../qurey/baseURL");
-const getAllScopusAuthIDs  = require("../scopus/getScopusIdFromApi");
+const getAllScopusAuthIDs  = require("./getScopusIdFromApi");
 
 const batchSize = 3;
 let roundScraping = 0;
@@ -20,10 +20,11 @@ let linkError = [];
 const scraperAuthorScopus = async () => {
   try {
     const baseAuthorUrl = getBaseURL();
-    const allURLs = await getAllScopusAuthIDs();
+    let allURLs = await getAllScopusAuthIDs();
+    allURLs  = allURLs.slice(6, 9);
 
     //allURLs.length
-    for (let i = roundScraping; i < 3; i += batchSize) {
+    for (let i = roundScraping; i < allURLs.length; i += batchSize) {
       const batchURLs = allURLs.slice(i, i + batchSize);
 
       roundScraping = i;
@@ -78,20 +79,20 @@ const scraperAuthorScopus = async () => {
               const data = result.value.author;
               if (await hasScopusIdInAuthor(data.author_scopus_id)) {
                 console.log(
-                  "\n--------------------------------------------------------"
+                  "\n-----------------------------------------------------------------------------------------------------"
                 );
                 console.log("Update Author Data Of ", data.name);
                 console.log(
-                  "--------------------------------------------------------"
+                  "------------------------------------------------------------------------------------------------------"
                 );
                 await updateDataToAuthor(data);
               } else {
                 console.log(
-                  "\n--------------------------------------------------------------"
+                  "\n-----------------------------------------------------------------------------------------------------"
                 );
                 console.log("First Scraping Author Of ", data.name);
                 console.log(
-                  "---------------------------------------------------------------"
+                  "------------------------------------------------------------------------------------------------------"
                 );
                 await insertAuthorDataToDbScopus(data);
               }

@@ -11,12 +11,12 @@ const axios = require("axios");
 const {
   scraperAuthorScopus,
   scraperOneAuthorScopus,
-} = require("../scraper/scopus/fuction_author");
+} = require("../scraper/scopus/function_author");
 const {
   scraperOneArticleScopus,
   scrapeArticleData,
 } = require("../scraper/scopus/function_article");
-const { scrapOneJournal } = require("../scraper/scopus/function_journal");
+const { scrapOneJournal, scrapJournal } = require("../scraper/scopus/function_journal");
 const {
   getOldAuthorData,
   getCountRecordInArticle,
@@ -29,7 +29,6 @@ const puppeteer = require("puppeteer");
 const {
   scraperArticleScopus,
 } = require("../scraper/scopus/function_article");
-const { scrapJournal } = require("../scraper/scopus/function_journal");
 process.setMaxListeners(100);
 
 const { createLogFile} = require("../scraper/scopus/function_Json");
@@ -47,12 +46,16 @@ const logging = async () => {
 
     resetLogScraping(); 
 
+    const journalLog = {
+      numJournalScraping : logScraping.journal.numJournalScraping,
+      numUpdateCiteScoreYear : logScraping.journal.numUpdateCiteScoreYear
+    }
     const finishLog = {
       message: "Scraping Data For Scopus Completed Successfully.",
       finishTime: getNowDateTime(), 
       numAuthorScraping: logScraping.author.numAuthorScraping,
       numArticleScraping: logScraping.article.numArticleScraping,
-      numJournalScraping: logScraping.journal.numJournalScraping,
+      numJournalScraping: journalLog,
       errorLinkRequest: logScraping.error,
     };
 
@@ -60,6 +63,7 @@ const logging = async () => {
 
     return finishLog 
   } catch (error) {
+    
     console.error("An error occurred:", error);
   }
 };
@@ -84,6 +88,7 @@ router.get("/scraper-scopus-cron", async (req, res) => {
     let finishLog 
     if (articleCount === 0) {
       await Promise.all([authorRequest, articleRequest]);
+      // finishLog  = await logging()
       setTimeout(async () => {
         await axios.get(`${baseApi}scraper/scopus-journal`);
         finishLog  = await logging()
@@ -93,7 +98,6 @@ router.get("/scraper-scopus-cron", async (req, res) => {
       finishLog = await logging()
     }
 
-  
     res.status(200).json(finishLog);
 
   } catch (error) {
@@ -220,6 +224,7 @@ router.get("/scopus-article", async (req, res) => {
 
 router.get("/scopus-journal", async (req, res) => {
   try {
+    // const journal = await scrapJournal("undefined","undefined");
     const journal = await scrapJournal();
     res.status(200).json({
       journalScopus: "Scraping Journal Success"

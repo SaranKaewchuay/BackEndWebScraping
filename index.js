@@ -39,15 +39,15 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
-const cronFormat = '32 17 * * *'
+const cronFormat = '42 18 * * *'
 cron.schedule(cronFormat, async () => {
   try {
     console.log('Running scraper job... At 17:25');
     const scopus = axios.get(`${baseApi}scraper/scraper-scopus-cron`);
-    console.log('Scraper Scopus job response:', scopus.data);
+    // console.log('Scraper Scopus job response:', scopus.data);
 
-    const scholar = axios.get(`${baseApi}scraper/scholar`);
-    console.log('Scraper Scholar job response:', scholar.data);
+    // const scholar = axios.get(`${baseApi}scraper/scholar`);
+
   } catch (error) {
     console.error("Cron job error:", error);
   }

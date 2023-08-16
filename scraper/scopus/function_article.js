@@ -792,8 +792,6 @@ const scrapeArticleData = async (
         html = await page.content();
         link_Article = await getArticleUrl(html, numNewDoc);
 
-        console.log("numDocInPage  : ", numDocInPage);
-
         while (
           await page.$eval(
             "#documents-panel > div > div.Columns-module__FxWfo > div:nth-child(2) > div > els-results-layout > els-paginator > nav > ul > li:last-child > button",

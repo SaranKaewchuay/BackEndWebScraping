@@ -855,6 +855,12 @@ const scrapeArticleData = async (
       console.log("Scraping Articles: ");
       const roundArticleScraping = 0;
       const article_detail = [];
+      let status 
+      if(typeof checkNumDoc !== "undefined"){
+        status = checkNumDoc.status
+      }else{
+        status = "first"
+      }
 
       await scrapeArticlesBatch(
         page,
@@ -865,7 +871,7 @@ const scrapeArticleData = async (
         roundArticleScraping,
         article_detail,
         oneArticle,
-        checkNumDoc.status
+        status
       );
 
       if (article_detail.length > 0) {
@@ -1123,7 +1129,6 @@ const getArticleDetail = async (
         console.log("-- Not Have Corresponding Of EID : ", eid);
       }
     } else if (typeof oneArticle === "undefined") {
-      console.log("Aaa");
       corresponding.scopusEID = eid;
       const data = await scraperCorresponding(page, html, coAuthor, eid);
       corresponding.corresAuthorID = data.corresAuthorID;

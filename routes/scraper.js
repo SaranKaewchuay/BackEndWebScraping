@@ -293,6 +293,8 @@ router.get("/scraper-articleOfauthor-scopus", async (req, res) => {
     const browser = await puppeteer.launch({ headless: false });
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: "networkidle2" });
+       const checkNumDoc = {}
+    checkNumDoc.status = "first"
     const article = await scrapeArticleData(url, page, 0, scopus_id);
     await browser.close();
 

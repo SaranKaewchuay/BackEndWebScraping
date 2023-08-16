@@ -1,0 +1,143 @@
+[
+  {
+    "message": "Scraping Data For Scopus Completed Successfully.",
+    "finishTime": "2023-08-14 20:46:04",
+    "numAuthorScraping": 6,
+    "numArticleScraping": 43,
+    "numJournalScraping": {
+      "numJournalScraping": 28,
+      "numUpdateCiteScoreYear": 0
+    },
+    "errorLinkRequest": []
+  },
+  {
+    "message": "Scraping Data For Scopus Completed Successfully.",
+    "finishTime": "2023-08-16 15:52:21",
+    "numAuthorScraping": 2,
+    "numArticleScraping": 2,
+    "numJournalScraping": {
+      "numJournalScraping": 2,
+      "numUpdateCiteScoreYear": 0
+    },
+    "errorLinkRequest": [
+      {
+        "name": "Doan Hoang Phu",
+        "url": "https://www.scopus.com/authid/detail.uri?authorId=58516219600"
+      }
+    ]
+  },
+  {
+    "message": "Scraping Data For Scopus Completed Successfully.",
+    "finishTime": "2023-08-16 15:58:30",
+    "numAuthorScraping": 2,
+    "numArticleScraping": 0,
+    "numJournalScraping": {
+      "numJournalScraping": 0,
+      "numUpdateCiteScoreYear": 0
+    },
+    "errorLinkRequest": [
+      {
+        "name": "Doan Hoang Phu",
+        "url": "https://www.scopus.com/authid/detail.uri?authorId=58516219600"
+      }
+    ]
+  },
+  {
+    "message": "Scraping Data For Scopus Completed Successfully.",
+    "finishTime": "2023-08-16 16:02:48",
+    "numAuthorScraping": 5,
+    "numArticleScraping": 5,
+    "numJournalScraping": {
+      "numJournalScraping": 4,
+      "numUpdateCiteScoreYear": 0
+    },
+    "errorLinkRequest": [
+      {
+        "name": "Doan Hoang Phu",
+        "url": "https://www.scopus.com/authid/detail.uri?authorId=58516219600"
+      }
+    ]
+  },
+  {
+    "message": "Scraping Data For Scopus Completed Successfully.",
+    "finishTime": "2023-08-16 16:08:27",
+    "numAuthorScraping": 5,
+    "numArticleScraping": 0,
+    "numJournalScraping": {
+      "numJournalScraping": 0,
+      "numUpdateCiteScoreYear": 3
+    },
+    "errorLinkRequest": [
+      {
+        "name": "Doan Hoang Phu",
+        "url": "https://www.scopus.com/authid/detail.uri?authorId=58516219600"
+      }
+    ]
+  },
+  {
+    "message": "Scraping Data For Scopus Completed Successfully.",
+    "finishTime": "2023-08-16 16:18:40",
+    "numAuthorScraping": 2,
+    "numArticleScraping": 13,
+    "numJournalScraping": {
+      "numJournalScraping": 12,
+      "numUpdateCiteScoreYear": 0
+    },
+    "errorLinkRequest": []
+  },
+  {
+    "message": "Scraping Data For Scopus Completed Successfully.",
+    "finishTime": "2023-08-16 16:22:51",
+    "numAuthorScraping": 2,
+    "numArticleScraping": 1,
+    "numJournalScraping": {
+      "numJournalScraping": 1,
+      "numUpdateCiteScoreYear": 3
+    },
+    "errorLinkRequest": []
+  },
+  {
+    "message": "Scraping Data For Scopus Completed Successfully.",
+    "finishTime": "2023-08-16 16:24:23",
+    "numAuthorScraping": 2,
+    "numArticleScraping": 0,
+    "numJournalScraping": {
+      "numJournalScraping": 0,
+      "numUpdateCiteScoreYear": 0
+    },
+    "errorLinkRequest": []
+  },
+  {
+    "message": "Scraping Data For Scopus Completed Successfully.",
+    "finishTime": "2023-08-16 16:28:32",
+    "numAuthorScraping": 3,
+    "numArticleScraping": 2,
+    "numJournalScraping": {
+      "numJournalScraping": 1,
+      "numUpdateCiteScoreYear": 3
+    },
+    "errorLinkRequest": []
+  },
+  {
+    "message": "Scraping Data For Scopus Completed Successfully.",
+    "finishTime": "2023-08-16 16:31:15",
+    "numAuthorScraping": 3,
+    "numArticleScraping": 0,
+    "numJournalScraping": {
+      "numJournalScraping": 0,
+      "numUpdateCiteScoreYear": 0
+    },
+    "errorLinkRequest": []
+  },
+  {
+    "message": "Scraping Data For Scopus Completed Successfully.",
+    "finishTime": "2023-08-16 16:40:20",
+    "numAuthorScraping": 4,
+    "numArticleScraping": 11,
+    "numJournalScraping": {
+      "numJournalScraping": 10,
+      "numUpdateCiteScoreYear": 3
+    },
+    "errorLinkRequest": []
+  }
+]

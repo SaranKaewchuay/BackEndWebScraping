@@ -1,34 +1,32 @@
 const fs = require('fs');
 const path = require('path');
 const filePath = '../../../numDoc/numDocInWalailak.json';
+require('../../logFileGoogleScholar.json')
 
 const createLogFile = async (data, type) => {
   try {
-    const logDirectory = 'C:/logFile';
     let logFilePath;
 
     if (type === 'scholar') {
-      logFilePath = path.join(logDirectory, 'logFileGoogleScholar.json');
+      logFilePath = path.join(__dirname, '..', '..', 'logFileGoogleScholar.json');
     } else if (type === 'scopus') {
-      logFilePath = path.join(logDirectory, 'logFileScopus.json');
-    }
-
-    if (!fs.existsSync(logDirectory)) {
-      fs.mkdirSync(logDirectory, { recursive: true });
+      logFilePath = path.join(__dirname, '..', '..', 'logFileScopus.json');
     }
 
     let existingData = [];
 
-    if (fs.existsSync(logFilePath)) {
+    try {
       const existingJson = await fs.promises.readFile(logFilePath, 'utf8');
       existingData = JSON.parse(existingJson);
+    } catch (readError) {
+      console.error('Error reading existing JSON:', readError);
     }
 
     const updatedData = [...existingData, data];
     const jsonData = JSON.stringify(updatedData, null, 2);
 
     await fs.promises.writeFile(logFilePath, jsonData, 'utf8');
-    
+
     console.log('\n-----------------------------------------------------');
     console.log('JSON file has been successfully created.');
     console.log('Path: ', logFilePath);
@@ -37,7 +35,6 @@ const createLogFile = async (data, type) => {
     console.error('An error occurred while writing the file:', err);
   }
 };
-
 
 const createJsonScourceID = async (data) => {
   try {
@@ -53,7 +50,6 @@ const createJsonScourceID = async (data) => {
     const jsonData = JSON.stringify(updatedData, null, 2);
 
     await fs.promises.writeFile(filePath, jsonData, "utf8");
-    // console.log("JSON source id file has been successfully created or updated.");
   } catch (err) {
     console.error("An error occurred while writing the file:", err);
   }
@@ -131,7 +127,6 @@ const readUrlScholarData = async () => {
     const logDirectory = 'D:/Term_3_2565/Project/json';
     const logFilePath = path.join(logDirectory, 'scholar.json');
 
-    // Check if the file exists before attempting to read it
     if (!fs.existsSync(logFilePath)) {
       console.log('The log file does not exist.');
       return null;
@@ -151,7 +146,6 @@ const readUrlScopusData = async () => {
     const logDirectory = 'D:/Term_3_2565/Project/json';
     const logFilePath = path.join(logDirectory, 'scopus.json');
 
-    // Check if the file exists before attempting to read it
     if (!fs.existsSync(logFilePath)) {
       console.log('The log file does not exist.');
       return null;

@@ -1,26 +1,36 @@
-require('dotenv').config();
 const fs = require('fs');
+const path = require('path');
 
 const setEnvValues = (setCron) => {
-    if (setCron) {
-        const envFilePath = '.env';
-        let envContent = fs.readFileSync(envFilePath, 'utf-8');
+    if (setCron !== undefined) {
+        const envFilePath = path.join(__dirname, '..', 'config.json');
+        try {
+            let envContent = JSON.parse(fs.readFileSync(envFilePath, 'utf-8'));
 
-        envContent = envContent.replace(/SETCRON=.*/, `SETCRON=${setCron}`);
+            envContent.SETCRON = setCron;
 
-        fs.writeFileSync(envFilePath, envContent);
+            fs.writeFileSync(envFilePath, JSON.stringify(envContent, null, 2));
+        } catch (error) {
+            console.error('Error reading or writing config file:', error.message);
+        }
     }
-    else{
+    else {
         console.log("not in setEnvValues")
     }
 };
 
 const getCron = () => {
-    const envFilePath = '.env';
-    const envContent = fs.readFileSync(envFilePath, 'utf-8');
-    const match = envContent.match(/SETCRON=(.*)/);
-    return match ? match[1] : null;
+    const envFilePath = path.join(__dirname, '..', 'config.json');
+    try {
+        const envContent = fs.readFileSync(envFilePath, 'utf-8');
+        const config = JSON.parse(envContent);
+        return config.SETCRON || null;
+    } catch (error) {
+        console.error('Error reading config file:', error.message);
+        return null;
+    }
 };
+
 
 module.exports = {
     setEnvValues, getCron

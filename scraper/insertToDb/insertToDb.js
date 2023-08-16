@@ -157,7 +157,7 @@ const insertAuthorDataToDbScopus = async (data) => {
 };
 
 
-const insertArticleDataToDbScopus = async (data, author_name, roundArticleScraping, batchSize) => {
+const insertArticleDataToDbScopus = async (data, author_name) => {
   try {
     let scopus_id
     const articles = data.map((articleData) => {
@@ -188,12 +188,50 @@ const insertArticleDataToDbScopus = async (data, author_name, roundArticleScrapi
     });
     await ArticleScopus.insertMany(articles);
 
-    console.log('\nArticles ' + (roundArticleScraping + Number(1)) + ' to ' + (roundArticleScraping + batchSize) + ' of | ' + author_name + ' saved successfully to MongoDB.');
+    console.log('\nArticles of | ' + author_name + ' saved successfully to MongoDB.');
     console.log("");
   } catch (error) {
     console.error('Error saving Articles data to MongoDB:', error);
   }
-};
+}
+
+// const insertArticleDataToDbScopus = async (data, author_name, roundArticleScraping, batchSize) => {
+//   try {
+//     let scopus_id
+//     const articles = data.map((articleData) => {
+//       scopus_id = articleData.author_scopus_id
+//       const article = {
+//         eid: articleData.eid,
+//         article_name: articleData.name,
+//         ...(articleData.hasOwnProperty('source_id') && { source_id: articleData.source_id }),
+//         first_author: articleData.first_author,
+//         co_author: articleData.co_author,
+//         co_author_department: articleData.co_author_department,
+//         // corresponding: articleData.corresponding,
+//         volume: articleData.volume,
+//         issue: articleData.issue,
+//         pages: articleData.pages,
+//         document_type: articleData.document_type,
+//         source_type: articleData.source_type,
+//         issn: articleData.issn,
+//         original_language: articleData.original_language,
+//         publisher: articleData.publisher,
+//         author_keywords: articleData.author_keywords,
+//         abstract: articleData.abstract,
+//         url: articleData.url,
+//         author_scopus_id: articleData.author_scopus_id,
+//       };
+
+//       return article;
+//     });
+//     await ArticleScopus.insertMany(articles);
+
+//     console.log('\nArticles ' + (roundArticleScraping + Number(1)) + ' to ' + (roundArticleScraping + batchSize) + ' of | ' + author_name + ' saved successfully to MongoDB.');
+//     console.log("");
+//   } catch (error) {
+//     console.error('Error saving Articles data to MongoDB:', error);
+//   }
+// };
 
 const insertDataToJournal = async (data, source_id) => {
   try {

@@ -1,0 +1,17 @@
+[
+  {
+    "message": "Scraping Data For Scholar Completed Successfully.",
+    "finishTime": "2023-08-14 17:51:31",
+    "numAuthorScraping": 5,
+    "numArticleScraping": 77,
+    "errorLinkRequest": []
+  },
+  {
+    "message": "Scraping Data For Scholar Completed Successfully.",
+    "finishTime": "2023-08-14 18:03:32",
+    "numAuthorScraping": 5,
+    "numArticleScraping": 77,
+    "errorLinkRequest": []
+  },
+  null
+]

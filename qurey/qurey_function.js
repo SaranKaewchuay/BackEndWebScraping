@@ -38,20 +38,40 @@ const hasEidOfAuthor = async (eid,scopus_id) => {
 
 const pushLogScraping = (data, type) => {
   try {
+    const errorAuthor = [];
+    const errorArticle = [];
+    let errorAll = [];
+
     if (type === "author") {
-      
-      allLogScraping.author = {numAuthorScraping : data.numAuthorScraping};
-      allLogScraping.error = data.error
+      allLogScraping.author = { numAuthorScraping: data.numAuthorScraping };
+      errorAuthor.push(...data.error);
     } else if (type === "article") {
-      allLogScraping.article = data;
+      allLogScraping.article = { numArticleScraping: data.numArticleScraping };
+      errorArticle.push(...data.error);
     } else if (type === "journal") {
       allLogScraping.journal = data;
-    } 
+    }
+
+    errorAll = errorAll.concat(errorAuthor, errorArticle);
+
+    const linkError = allLogScraping.error || [];
+
+    for (const newEntry of errorAll) {
+      const isDuplicate = linkError.find(
+        ({ name, url }) => name === newEntry.name && url === newEntry.url
+      );
+      if (!isDuplicate) {
+        linkError.push(newEntry);
+      }
+    }
+    allLogScraping.error = linkError;
+
     return "success";
   } catch (err) {
     return "failure";
   }
 };
+
 
 const resetLogScraping = () => {
   try {
@@ -119,7 +139,7 @@ const addCountDocumentInWu = async (scopusId, documentsInWu, authorName) => {
     const result = await AuthorScopus.updateOne(filter, updateOperation);
 
     if (result.modifiedCount > 0) {
-      console.log(`Added count of documents in Wu for ${authorName} successfully.`);
+      console.log(`Added count of documents in Wu for ${authorName} successfully.\n`);
     } else {
       const zeroDocumentFilter = { author_scopus_id: scopusId, wu_documents: 0 };
       const zeroDocumentUpdate = { $set: { wu_documents: documentsInWu } };

@@ -15,13 +15,13 @@ const {
   scraperOneArticleScopus,
   scrapeArticleData,
 } = require("../scraper/scopus/function_article");
-const { scrapOneJournal, scrapJournal } = require("../scraper/scopus/function_journal");
+const { scrapOneJournal, scrapJournal, resetVariableJournal } = require("../scraper/scopus/function_journal");
 const {
   getOldAuthorData,
   getCountRecordInArticle,
   resetLogScraping,
   getLogScraping,
-  getNowDateTime,
+  getNowDateTime
 } = require("../qurey/qurey_function");
 const puppeteer = require("puppeteer");
 const {
@@ -93,12 +93,14 @@ router.get("/scraper-scopus-cron", async (req, res) => {
       setTimeout(async () => {
         await axios.get(`${baseApi}scraper/scopus-journal`);
         finishLog = await logging()
+        resetVariableJournal();
         // await createLogFile(finshLogScholar, "scholar");
         res.status(200).json(finishLog);
       }, 1500);
     } else {
       await Promise.all([authorRequest, articleRequest, journalRequest]);
       finishLog = await logging()
+      resetVariableJournal();
       // await createLogFile(finshLogScholar, "scholar");
       res.status(200).json(finishLog);
     }

@@ -143,9 +143,13 @@ const scrapJournal = async (sourceID) => {
               };
             } else if (yearLastestInWebPage > yearLastestInDb) {
               checkUpdate = true;
-              console.log("\n------------------------------------------------------");
+              console.log(
+                "\n------------------------------------------------------"
+              );
               console.log("Update Journal Data Source ID : ", journalItem);
-              console.log("-------------------------------------------------------");
+              console.log(
+                "-------------------------------------------------------"
+              );
               console.log("yearLastestInWebPage = ", yearLastestInWebPage);
               console.log("yearLastestInDb = ", yearLastestInDb, "\n");
               const new_cite_source_year = await processDropdowns(
@@ -369,7 +373,6 @@ const scrapOneJournal = async (source_id) => {
           const page = await browser.newPage();
           const link = `https://www.scopus.com/sourceid/${journalItem}`;
           await page.goto(link, { waitUntil: "networkidle2" });
-          // await page.waitForTimeout(1600);
           await waitForElement(
             "#csCalculation > div:nth-child(2) > div:nth-child(2) > div > span.fupValue > a > span"
           );
@@ -551,6 +554,7 @@ const scraperJournalData = async (
     console.error("\nError occurred while scraping:\n", error);
 
     if (checkAddJournal) {
+      await scraperJournalData(source_id, 0, page, addJournal);
       return;
     } else {
       return null;

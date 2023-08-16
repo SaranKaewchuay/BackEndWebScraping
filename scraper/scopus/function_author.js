@@ -21,7 +21,7 @@ const scraperAuthorScopus = async () => {
   try {
     const baseAuthorUrl = getBaseURL();
     let allURLs = await getAllScopusAuthIDs();
-    allURLs = allURLs.slice(10, 14);
+    allURLs = allURLs.slice(0, allURLs.length);
 
     //allURLs.length
     for (let i = roundScraping; i < allURLs.length; i += batchSize) {
@@ -43,7 +43,6 @@ const scraperAuthorScopus = async () => {
         try {
           let author_data = await scrapeAuthorData(author_url, page, data.name);
           if (author_data === "Page not found") {
-            console.log("aaa");
             return { status: "Page not found", author: "Page not found" };
           }
 
@@ -77,7 +76,7 @@ const scraperAuthorScopus = async () => {
 
       const hasFalse = mappedResults.includes(false);
       const finalResult = !hasFalse;
-      console.log("mappedResults = ", mappedResults);
+      console.log("Author Results Status : ", mappedResults);
 
       if (finalResult) {
         if (
@@ -188,7 +187,6 @@ const scraperOneAuthorScopus = async (scopus_id) => {
     const filtered_data = author_data.filter(
       (author) => author !== null && author !== "Page not found"
     );
-    // const filtered_data = author_data.filter((author) => author !== null);
 
     return filtered_data;
   } catch (error) {

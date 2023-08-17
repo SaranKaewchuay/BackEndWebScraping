@@ -141,7 +141,7 @@ const addCountDocumentInWu = async (scopusId, documentsInWu, authorName) => {
     if (result.modifiedCount > 0) {
       console.log(`Added count of documents in Wu for ${authorName} successfully.\n`);
     } else {
-      const zeroDocumentFilter = { author_scopus_id: scopusId, wu_documents: 0 };
+      const zeroDocumentFilter = { author_scopus_id: scopusId, wu_documents: "0" };
       const zeroDocumentUpdate = { $set: { wu_documents: documentsInWu } };
       const zeroDocumentResult = await AuthorScopus.updateOne(zeroDocumentFilter, zeroDocumentUpdate);
 

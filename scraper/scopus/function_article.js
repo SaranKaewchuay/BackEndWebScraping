@@ -4,6 +4,7 @@ const {
   insertArticleDataToDbScopus,
   insertDataToJournal,
   insertDataToCoressponding,
+  insertWuDocBeforAuthorScopus 
 } = require("../insertToDb/insertToDb");
 const {
   getOldNumDocInPage,
@@ -18,6 +19,7 @@ const {
   hasSourceEID,
   hasEidOfAuthor,
   pushLogScraping,
+  hasScopusIdInAuthor,
 } = require("../../qurey/qurey_function");
 const {
   scraperJournalData,
@@ -46,7 +48,7 @@ const scraperArticleScopus = async () => {
   try {
     const baseAuthorUrl = getBaseURL();
     let allURLs = await getAllScopusAuthIDs();
-    allURLs = allURLs.slice(16, 20);
+    allURLs = allURLs.slice(0, allURLs.length);
 
     if (numOldDocument === 0) {
       numOldDocument = await getCountRecordInArticle();
@@ -56,7 +58,6 @@ const scraperArticleScopus = async () => {
     if (numRecordArticle === 0) {
       checkScrapingFirst = true;
     }
-
 
     //allURLs.length
     while (roundScraping < allURLs.length) {
@@ -115,10 +116,15 @@ const scraperArticleScopus = async () => {
             let article_data;
             if (numArticleOfAuthor === 0) {
               checkFirst = true;
-              checkArticleScrapingFirst = true
+              checkArticleScrapingFirst = true;
               checkNumDoc.status = "first";
               if (numDocInPage == 0) {
-                await addCountDocumentInWu(scopusId, 0, data.name);
+                if (await hasScopusIdInAuthor(scopusId)) {
+                  await addCountDocumentInWu(scopusId, 0, data.name);
+                } else {
+                  await insertWuDocBeforAuthorScopus(scopusId, 0, data.name);
+                }
+
                 return {
                   status: "fulfilled",
                   article: [],
@@ -158,7 +164,7 @@ const scraperArticleScopus = async () => {
             } else if (
               numDocInPage > oldNumDocInPage &&
               oldNumDocInPage !== 0 &&
-              numDocInPage !== 0 
+              numDocInPage !== 0
             ) {
               checkUpdate = true;
               const numNewDoc = numDocInPage - oldNumDocInPage;
@@ -348,7 +354,7 @@ const scraperArticleScopus = async () => {
       console.log(
         "\n---------------------------------------------------------------------------------------------"
       );
-      console.log("Update Scraping journal Data : ", logJournal);
+      console.log("Update Log Scraping journal Data : ", logJournal);
       console.log(
         "---------------------------------------------------------------------------------------------\n"
       );
@@ -356,7 +362,7 @@ const scraperArticleScopus = async () => {
     checkAddArtilce = false;
     checkScrapingFirst = false;
     checkAddSourceId = false;
-    checkArticleScrapingFirst = false
+    checkArticleScrapingFirst = false;
     roundScraping = 0;
     allArticle = [];
     errorURLs = [];
@@ -414,7 +420,6 @@ const scraperArticlePageUpdate = async (scopus_id, page) => {
       const promises = batchUrls.map(async (article_url, index) => {
         const articlePage = await page.browser().newPage();
         try {
-          
           await articlePage.goto(article_url, { waitUntil: "networkidle2" });
           const html = await articlePage.content();
           const $ = cheerio.load(html);
@@ -853,11 +858,11 @@ const scrapeArticleData = async (
       console.log("Scraping Articles: ");
       const roundArticleScraping = 0;
       const article_detail = [];
-      let status 
-      if(typeof checkNumDoc !== "undefined"){
-        status = checkNumDoc.status
-      }else{
-        status = "first"
+      let status;
+      if (typeof checkNumDoc !== "undefined") {
+        status = checkNumDoc.status;
+      } else {
+        status = "first";
       }
 
       await scrapeArticlesBatch(
@@ -876,16 +881,38 @@ const scrapeArticleData = async (
         checkAddArtilce = true;
         await insertArticleDataToDbScopus(article_detail, author_name);
         if (checkFirst) {
-          await addCountDocumentInWu(
-            scopus_id,
-            article_detail.length,
-            author_name
-          );
+          if (await hasScopusIdInAuthor(scopus_id)) {
+            await addCountDocumentInWu(
+              scopus_id,
+              article_detail.length,
+              author_name
+            );
+          } else {
+            await insertWuDocBeforAuthorScopus(
+              scopus_id,
+              article_detail.length,
+              author_name
+            );
+          }
         } else {
           const articleInWU =
             Number(await getOldNumArticleInWU(scopus_id)) +
             article_detail.length;
-          await addCountDocumentInWu(scopus_id, articleInWU, author_name);
+          if (await hasScopusIdInAuthor(scopus_id)) {
+            await addCountDocumentInWu(scopus_id, articleInWU, author_name);
+          } else {
+            await insertWuDocBeforAuthorScopus(
+              scopus_id,
+              articleInWU,
+              author_name
+            );
+          }
+        }
+      } else {
+        if (await hasScopusIdInAuthor(scopus_id)) {
+          await addCountDocumentInWu(scopus_id, 0, author_name);
+        } else {
+          await insertWuDocBeforAuthorScopus(scopus_id, 0, author_name);
         }
       }
 
@@ -1245,12 +1272,12 @@ const getSourceID = async (page, status) => {
         const source_id = $("#source-preview-details-link")
           .attr("href")
           .split("/")[2];
-        let checkUpdateArticle
+        let checkUpdateArticle;
         if (typeof status !== "undefined") {
-          if(status === "update"){
-            checkUpdateArticle = true
-          }else{
-            checkUpdateArticle = false
+          if (status === "update") {
+            checkUpdateArticle = true;
+          } else {
+            checkUpdateArticle = false;
           }
         }
         if (checkUpdateArticle) {
@@ -1276,7 +1303,12 @@ const getSourceID = async (page, status) => {
               "#csCalculation > div:nth-child(2) > div:nth-child(2) > div > span.fupValue > a > span"
             );
             // const data = await scraperJournalData(source_id, 0, page);
-            const data = await scraperJournalData(source_id,0,page,"addJournalNewArticle");
+            const data = await scraperJournalData(
+              source_id,
+              0,
+              page,
+              "addJournalNewArticle"
+            );
             await browser.close();
             await insertDataToJournal(data, source_id);
             checkAddSourceId = true;

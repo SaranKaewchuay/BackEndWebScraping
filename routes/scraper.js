@@ -232,7 +232,9 @@ router.get("/scopus-article", async (req, res) => {
 
 router.get("/scopus-journal", async (req, res) => {
   try {
+    console.log("\n **** Start Scraping Journal Data From Scopus ****\n");
     const journal = await scrapJournal();
+    console.log("\n **** Finish Scraping Journal Data From Scopus ****\n");
     res.status(200).json({
       journalScopus: "Scraping Journal Success"
     });

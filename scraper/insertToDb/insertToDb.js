@@ -157,6 +157,25 @@ const insertAuthorDataToDbScopus = async (data) => {
 };
 
 
+const insertWuDocBeforAuthorScopus = async (scopus_id, wu_documents, author_name) => {
+  try {
+    const objectId = new ObjectId();
+
+    const newAuthor = new AuthorScopus({
+      _id: objectId,
+      author_scopus_id: scopus_id,
+      wu_documents : wu_documents
+    });
+
+    await newAuthor.save();
+    console.log('\nAdded Count Document In Wu Of ', author_name, ' successfully.\n');
+
+  } catch (error) {
+    console.error('Error Added Count Document to MongoDB:', error);
+  }
+};
+
+
 const insertArticleDataToDbScopus = async (data, author_name) => {
   try {
     let scopus_id
@@ -331,5 +350,6 @@ module.exports = {
   insertDataToJournal,
   updateDataToJournal,
   updateDataToAuthor,
-  insertDataToCoressponding
+  insertDataToCoressponding,
+  insertWuDocBeforAuthorScopus 
 };

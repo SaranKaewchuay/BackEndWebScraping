@@ -1,77 +1,66 @@
 [
   {
     "message": "Scraping Data For Scopus Completed Successfully.",
-    "finishTime": "2023-08-16 22:47:52",
-    "numAuthorScraping": 6,
-    "numArticleScraping": 20,
+    "finishTime": "2023-08-17 23:22:44",
+    "numAuthorScraping": 5,
+    "numArticleScraping": 5,
     "numJournalScraping": {
-      "numJournalScraping": 13,
+      "numJournalScraping": 4,
       "numUpdateCiteScoreYear": 0
     },
     "errorLinkRequest": []
   },
   {
     "message": "Scraping Data For Scopus Completed Successfully.",
-    "finishTime": "2023-08-16 22:58:33",
+    "finishTime": "2023-08-17 23:37:18",
     "numAuthorScraping": 7,
-    "numArticleScraping": 5,
+    "numArticleScraping": 7,
     "numJournalScraping": {
-      "numJournalScraping": 5,
+      "numJournalScraping": 7,
       "numUpdateCiteScoreYear": 4
     },
     "errorLinkRequest": []
   },
   {
     "message": "Scraping Data For Scopus Completed Successfully.",
-    "finishTime": "2023-08-16 23:02:29",
+    "finishTime": "2023-08-17 23:45:54",
     "numAuthorScraping": 7,
-    "numArticleScraping": 0,
+    "numArticleScraping": 7,
     "numJournalScraping": {
       "numJournalScraping": 0,
-      "numUpdateCiteScoreYear": 4
-    },
-    "errorLinkRequest": []
-  },
-  {
-    "message": "Scraping Data For Scopus Completed Successfully.",
-    "finishTime": "2023-08-17 01:25:32",
-    "numAuthorScraping": 2,
-    "numArticleScraping": 13,
-    "numJournalScraping": {
-      "numJournalScraping": 6,
       "numUpdateCiteScoreYear": 0
     },
     "errorLinkRequest": []
   },
   {
     "message": "Scraping Data For Scopus Completed Successfully.",
-    "finishTime": "2023-08-17 10:32:23",
-    "numAuthorScraping": 3,
-    "numArticleScraping": 5,
+    "finishTime": "2023-08-18 00:45:24",
+    "numAuthorScraping": 7,
+    "numArticleScraping": 7,
+    "numJournalScraping": {
+      "numJournalScraping": 0,
+      "numUpdateCiteScoreYear": 0
+    },
+    "errorLinkRequest": []
+  },
+  {
+    "message": "Scraping Data For Scopus Completed Successfully.",
+    "finishTime": "2023-08-18 01:10:20",
+    "numAuthorScraping": 5,
+    "numArticleScraping": 37,
+    "numJournalScraping": {
+      "numJournalScraping": 26,
+      "numUpdateCiteScoreYear": 0
+    },
+    "errorLinkRequest": []
+  },
+  {
+    "message": "Scraping Data For Scopus Completed Successfully.",
+    "finishTime": "2023-08-18 01:18:17",
+    "numAuthorScraping": 6,
+    "numArticleScraping": 6,
     "numJournalScraping": {
       "numJournalScraping": 3,
-      "numUpdateCiteScoreYear": 0
-    },
-    "errorLinkRequest": []
-  },
-  {
-    "message": "Scraping Data For Scopus Completed Successfully.",
-    "finishTime": "2023-08-17 10:34:47",
-    "numAuthorScraping": 3,
-    "numArticleScraping": 0,
-    "numJournalScraping": {
-      "numJournalScraping": 0,
-      "numUpdateCiteScoreYear": 3
-    },
-    "errorLinkRequest": []
-  },
-  {
-    "message": "Scraping Data For Scopus Completed Successfully.",
-    "finishTime": "2023-08-17 10:40:51",
-    "numAuthorScraping": 4,
-    "numArticleScraping": 1,
-    "numJournalScraping": {
-      "numJournalScraping": 1,
       "numUpdateCiteScoreYear": 0
     },
     "errorLinkRequest": []

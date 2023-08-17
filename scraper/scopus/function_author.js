@@ -21,7 +21,7 @@ const scraperAuthorScopus = async () => {
   try {
     const baseAuthorUrl = getBaseURL();
     let allURLs = await getAllScopusAuthIDs();
-    allURLs = allURLs.slice(270, 271);
+    allURLs = allURLs.slice(0, allURLs.length);
 
     //allURLs.length
     for (let i = roundScraping; i < allURLs.length; i += batchSize) {

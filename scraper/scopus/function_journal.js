@@ -462,94 +462,90 @@ const scraperJournalData = async (
 ) => {
   let checkAddJournal = false;
   try {
-    if (!(await hasSourceID(source_id))) {
-      let html = await page.content();
-      const buttonElement = await page.$("#csSubjContainer > button");
+    let html = await page.content();
+    const buttonElement = await page.$("#csSubjContainer > button");
 
-      if (buttonElement) {
-        await page.click("#csSubjContainer > button");
-        await page.waitForTimeout(1300);
-        html = await page.content();
-      }
-
-      const $ = cheerio.load(html);
-
-      let journal = {
-        source_id,
-        journal_name: $(
-          "#jourlSection > div.col-md-9.col-xs-9.noPadding > div > h2"
-        )
-          .text()
-          .trim(),
-      };
-
-      const fieldPromises = [];
-
-      $("#jourlSection > div.col-md-9.col-xs-9.noPadding > div > ul > li").each(
-        (index, element) => {
-          const fieldText = $(element)
-            .find("span.left")
-            .text()
-            .trim()
-            .toLowerCase()
-            .replace(":", "")
-            .replace(/ /g, "_")
-            .replace("-", "");
-
-          const fieldValue = $(element).find("span.right").text().trim();
-
-          if (fieldText === "issneissn:") {
-            journal.issn = $(element)
-              .find("#issn > span:nth-child(2)")
-              .text()
-              .trim();
-
-            journal.eissn = $(element)
-              .find("span.marginLeft1.right")
-              .text()
-              .trim();
-          } else if (fieldText === "subject_area") {
-            fieldPromises.push(
-              scrapSubjectAreaJournal(html).then((subjectArea) => {
-                journal[fieldText] = subjectArea;
-              })
-            );
-          } else {
-            journal[fieldText] = fieldValue;
-          }
-        }
-      );
-
-      await Promise.all(fieldPromises);
-      let changeJournal = await scraperChangeNameJournal(html);
-
-      if (changeJournal.length > 0) {
-        journal.changeJournal = changeJournal;
-      }
-
-      journal.cite_source = await processDropdowns(page, numNewJournal);
-
-      for (const field in journal) {
-        if (journal.hasOwnProperty(field) && field !== "cite_source") {
-          if (isEmptyOrLengthZero(journal[field])) {
-            journal = null;
-            break;
-          }
-        }
-      }
-
-      if (
-        typeof addJournal !== "undefined" &&
-        addJournal === "addJournalNewArticle"
-      ) {
-        checkAddJournal = true;
-        addJournalData.push(journal);
-      }
-
-      return journal;
-    } else {
-      return;
+    if (buttonElement) {
+      await page.click("#csSubjContainer > button");
+      await page.waitForTimeout(1300);
+      html = await page.content();
     }
+
+    const $ = cheerio.load(html);
+
+    let journal = {
+      source_id,
+      journal_name: $(
+        "#jourlSection > div.col-md-9.col-xs-9.noPadding > div > h2"
+      )
+        .text()
+        .trim(),
+    };
+
+    const fieldPromises = [];
+
+    $("#jourlSection > div.col-md-9.col-xs-9.noPadding > div > ul > li").each(
+      (index, element) => {
+        const fieldText = $(element)
+          .find("span.left")
+          .text()
+          .trim()
+          .toLowerCase()
+          .replace(":", "")
+          .replace(/ /g, "_")
+          .replace("-", "");
+
+        const fieldValue = $(element).find("span.right").text().trim();
+
+        if (fieldText === "issneissn:") {
+          journal.issn = $(element)
+            .find("#issn > span:nth-child(2)")
+            .text()
+            .trim();
+
+          journal.eissn = $(element)
+            .find("span.marginLeft1.right")
+            .text()
+            .trim();
+        } else if (fieldText === "subject_area") {
+          fieldPromises.push(
+            scrapSubjectAreaJournal(html).then((subjectArea) => {
+              journal[fieldText] = subjectArea;
+            })
+          );
+        } else {
+          journal[fieldText] = fieldValue;
+        }
+      }
+    );
+
+    await Promise.all(fieldPromises);
+    let changeJournal = await scraperChangeNameJournal(html);
+
+    if (changeJournal.length > 0) {
+      journal.changeJournal = changeJournal;
+    }
+
+    journal.cite_source = await processDropdowns(page, numNewJournal);
+
+    for (const field in journal) {
+      if (journal.hasOwnProperty(field) && field !== "cite_source") {
+        if (isEmptyOrLengthZero(journal[field])) {
+          journal = null;
+          break;
+        }
+      }
+    }
+
+    if (
+      typeof addJournal !== "undefined" &&
+      addJournal === "addJournalNewArticle"
+    ) {
+      checkAddJournal = true;
+      addJournalData.push(journal);
+    }
+
+    return journal;
   } catch (error) {
     console.error("\nError occurred while scraping:\n", error);
 

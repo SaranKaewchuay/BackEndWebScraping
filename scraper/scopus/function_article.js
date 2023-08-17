@@ -46,7 +46,7 @@ const scraperArticleScopus = async () => {
   try {
     const baseAuthorUrl = getBaseURL();
     let allURLs = await getAllScopusAuthIDs();
-    allURLs = allURLs.slice(0, allURLs.length);
+    allURLs = allURLs.slice(16, 20);
 
     if (numOldDocument === 0) {
       numOldDocument = await getCountRecordInArticle();

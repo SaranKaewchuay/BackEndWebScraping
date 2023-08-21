@@ -1,5 +1,5 @@
 {
-  "DATABASE_URI": "mongodb+srv://root:1234@db01.uyg1g.mongodb.net/test",
+  "DATABASE_URI": "mongodb+srv://root:1234@cluster0.l78dbvc.mongodb.net/test",
   "DB_NAME": "wurisdb",
   "BASEURL": "https://www.scopus.com/authid/detail.uri?authorId=",
   "SETCRON": "32 20 * * *"

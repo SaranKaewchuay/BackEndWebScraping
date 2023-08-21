@@ -46,19 +46,23 @@ const isDuplicateSourceID = (sourceID) => {
 const scrapJournal = async (sourceID) => {
   try {
     let hasSource = false;
-    
+
     if (typeof sourceID !== "undefined") {
       addSourceId = sourceID;
       await processBatch(addSourceId, hasSource, roundAddJournal, sourceID);
     } else if ((await getCountRecordInJournal()) === 0 || journal.length > 0) {
-      console.log("\n----- Scraping Journal From All Source Id Of Article ----- \n");
+      console.log(
+        "\n----- Scraping Journal From All Source Id Of Article ----- \n"
+      );
       if (sourceId.length <= 0) {
         sourceId = await getAllSourceIdOfArticle();
       }
       await processBatch(sourceId, hasSource, roundJournal);
     } else {
       hasSource = true;
-      console.log("\n----- Scraping Vetify Update Cite Score Year Of Journal ----- \n");
+      console.log(
+        "\n----- Scraping Vetify Update Cite Score Year Of Journal ----- \n"
+      );
       if (sourceId.length <= 0) {
         sourceId = await getAllSourceIDJournal();
       }
@@ -81,13 +85,15 @@ const scrapJournal = async (sourceID) => {
       console.log("\n ---- Finish Scraping New Journal ---- \n");
       const logScrapingJournal = displayLogJournal(
         numScraping,
-        numUpdateCiteScoreYear,
+        numUpdateCiteScoreYear
       );
       addSourceId = [];
       return logScrapingJournal;
     } else {
       roundJournal = 0;
-      console.log("\n ---- Finish Scraping First Or Update Cite Score Year Journal ---- \n");
+      console.log(
+        "\n ---- Finish Scraping First Or Update Cite Score Year Journal ---- \n"
+      );
       const logScrapingJournal = displayLogJournal(
         numScraping,
         numUpdateCiteScoreYear
@@ -161,14 +167,25 @@ const processBatch = async (journalData, hasSource, round, sourceID) => {
             let numNewJournal = 0;
 
             if (hasSource) {
-              const yearDb = Number(
+              let yearDb = Number(
                 await getCiteSourceYearLastestInDb(journalItem)
               );
-              if (yearDb !== null) {
-                await waitForElement("#year-button > span.ui-selectmenu-text");
-                yearLastestInWebPage =
-                  await scraperCiteScoreYearLastestInWebPage(page);
-                yearLastestInDb = yearDb;
+              if (yearDb === null) {
+                yearDb = 0;
+              }
+              await waitForElement("#year-button > span.ui-selectmenu-text");
+              yearLastestInWebPage = await scraperCiteScoreYearLastestInWebPage(
+                page
+              );
+              yearLastestInDb = yearDb;
+
+              const numberYearLastestInWebPage =
+                yearLastestInWebPage.toString().length;
+              const numberYearLastestInDb = yearLastestInDb.toString().length;
+
+              if (numberYearLastestInWebPage > numberYearLastestInDb) {
+                numNewJournal = 0;
+              } else {
                 numNewJournal = yearLastestInWebPage - yearLastestInDb;
               }
             }
@@ -260,6 +277,7 @@ const processBatch = async (journalData, hasSource, round, sourceID) => {
             return;
           }
         } catch (error) {
+          console.error("Error: ", error);
           return {
             status: "rejected",
             value: null,
@@ -384,7 +402,18 @@ const scraperCiteScoreYearLastestInWebPage = async (page) => {
   try {
     const html = await page.content();
     const $ = cheerio.load(html);
-    const yeareLastest = $("#year-button > span.ui-selectmenu-text").text();
+    let yeareLastest = 0;
+    if ($("#year").length > 0) {
+      yeareLastest = $("#year-button > span.ui-selectmenu-text").text();
+    } else {
+      if ($("#rpResult").length > 0) {
+        yeareLastest =
+          $("#csCalculation > div:nth-child(2) > div:nth-child(1) > h3")
+            .text()
+            .match(/\d{4}/)?.[0] || null;
+      }
+    }
+
     return Number(yeareLastest);
   } catch (error) {
     console.error(
@@ -666,13 +695,15 @@ const processDropdowns = async (page, numNewJournal) => {
         $("#csCalculation > div:nth-child(2) > div:nth-child(1) > h3")
           .text()
           .match(/\d{4}/)?.[0] || null;
-      const citation = $("#rpResult").text();
-      const category = await scrapCategoryJournal(html);
-      const calculated = $("#lastUpdatedTimeStamp")
+      const citeScore = $("#rpResult").text();
+      const calculatedDate = $("#lastUpdatedTimeStamp")
         .text()
         .substring("Calculated on ".length)
         .replace(",", "");
-      const data = { year, calculated, citation, category };
+
+      const cite = { year, citeScore, calculatedDate };
+      const category = await scrapCategoryJournal(html);
+      const data = { cite, category };
       dataCitation.push(data);
     }
   } catch (error) {

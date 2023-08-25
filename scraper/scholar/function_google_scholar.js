@@ -2,10 +2,9 @@ const puppeteer = require("puppeteer");
 const cheerio = require("cheerio");
 const axios = require("axios");
 const { insertDataToDbScholar} = require("../insertToDb/insertToDb");
-const userAgent = require("user-agents");
 
 let linkError = [];
-let url_not = [];
+// let url_not = [];
 let url_author;
 
 const getUserScholarId = async (url) => {
@@ -43,9 +42,8 @@ const check_url = async (authorObject) => {
   try {
     let url_checked;
     const name = authorObject.name.split(".").pop().trim().split(" ");
-    const browser = await puppeteer.launch({ headless:  "new" });
+    const browser = await puppeteer.launch({ headless: "new" });
     const page = await browser.newPage();
-    await page.setUserAgent(userAgent.random().toString());
 
     const url = `https://scholar.google.com/scholar?hl=th&as_sdt=0%2C5&q=${name[0]}+${name[1]}`;
     await page.goto(url, { waitUntil: "networkidle2" });
@@ -116,20 +114,16 @@ const getAuthorAllDetail = async (authorObject, number_author, length) => {
     index: number_author - 1,
   };
   try {
-      linkError = [];
-      url_not = [];
-      url_author;
-
+      linkError = []; 
     const browser = await puppeteer.launch({ headless: "new" });
     const page = await browser.newPage();
-    await page.setUserAgent(userAgent.random().toString());
     const scholar_id = await getUserScholarId(authorObject.url)
-
-    let url_checked = await check_url(authorObject);
+    const scholar_url = authorObject.url
+    // let url_checked = await check_url(authorObject);
     let authorAllDetail;
     let url_not_ready;
 
-    const response = await page.goto(url_checked, {
+    const response = await page.goto(scholar_url, {
       waitUntil: "networkidle2",
     });
 
@@ -148,7 +142,7 @@ const getAuthorAllDetail = async (authorObject, number_author, length) => {
       );
       console.log("Number of Articles: ", content.length);
 
-      const batchSize = 50;
+      const batchSize = 10;
 
       const article_detail_promises = [];
 
@@ -163,7 +157,7 @@ const getAuthorAllDetail = async (authorObject, number_author, length) => {
         article_detail_promises.push(...batch_promises);
       }
 
-      authorAllDetail = await getAuthorDetail(html, url_checked);
+      authorAllDetail = await getAuthorDetail(html, scholar_url);
       authorAllDetail.articles = await Promise.all(article_detail_promises);
       authorAllDetail.documents = article_detail_promises.length 
       if (authorAllDetail) {
@@ -173,11 +167,11 @@ const getAuthorAllDetail = async (authorObject, number_author, length) => {
       authorAllDetail = false;
       url_not_ready = {
         name: authorObject.name,
-        url: url_checked,
+        url: scholar_url,
         index: number_author - 1,
       };
-      url_not.push(url_not_ready);
-      console.log("url_not : ", url_not);
+      // url_not.push(url_not_ready);
+      console.log("url_not_ready : ", url_not_ready);
     }
 
     await browser.close();
@@ -197,7 +191,7 @@ const getAuthorScholar = async (author_id) => {
   const all_id = author_id.split(",").map((e) => e.trim());
 
   try {
-    const browser = await puppeteer.launch({ headless: false });
+    const browser = await puppeteer.launch({ headless: "new" });
 
     let authorAll = [];
     let url_not_ready = [];
@@ -211,7 +205,6 @@ const getAuthorScholar = async (author_id) => {
       const batch = all_id.slice(i, i + sizeLoop);
       const batch_promises = batch.map(async (scholar_id) => {
         const page = await browser.newPage();
-        await page.setUserAgent(userAgent.random().toString());
         console.log(`Scholar ID: ${scholar_id}`);
         const url = `https://scholar.google.com/citations?user=${scholar_id}&hl=en`;
         url_author = {
@@ -257,10 +250,8 @@ const getAuthorScholar = async (author_id) => {
 const getArticleScholar = async (scholar_id) => {
   
   try {
-    const browser = await puppeteer.launch({ headless: false });
+    const browser = await puppeteer.launch({ headless: "new" });
     const page = await browser.newPage();
-    await page.setUserAgent(userAgent.random().toString());
-
 
     let articleAll;
     let url_not_ready;
@@ -279,7 +270,7 @@ const getArticleScholar = async (scholar_id) => {
       console.log(" Scrapin Article of scohalr ID : ",scholar_id);
       console.log("Number of Articles: ", content.length);
 
-      const batchSize = 50; 
+      const batchSize = 10; 
 
       const article_detail_promises = [];
 
@@ -307,7 +298,8 @@ const getArticleScholar = async (scholar_id) => {
           scholar_id: scholar_id,
           url: url,
       };
-      url_not.push(url_not_ready);
+      // url_not.push(url_not_ready);
+      console.log("url_not_ready : ",url_not_ready)
     }
 
     await browser.close();
@@ -323,10 +315,15 @@ const getArticleScholar = async (scholar_id) => {
 
 const scrapeAdditionalData = async (page) => {
   try {
+    // const hasError = await page.$("#gsc_a_sp");
     while (await page.$eval("#gsc_bpf_more", (button) => !button.disabled)) {
-      await page.click("#gsc_bpf_more");
-      await page.waitForTimeout(2000);
-      await page.waitForSelector("#gsc_a_b");
+      // if(hasError){
+      //   break
+      // }
+        await page.click("#gsc_bpf_more");
+        await page.waitForTimeout(2000);
+        await page.waitForSelector("#gsc_a_b");
+      
     }
   } catch (error) {
     url_author.message_error = "An error occurred: " + error;
@@ -342,8 +339,6 @@ const scrapeAdditionalData = async (page) => {
 const fetchArticleDetail = async (browser, detail_page_url,scholar_id) => {
   try {
     const page = await browser.newPage();
-    await page.setUserAgent(userAgent.random().toString());
-
     await page.goto(detail_page_url, { waitUntil: "networkidle2" });
     const detail_page_html = await page.content();
     const article_data = await getArticleDetail(
@@ -403,7 +398,6 @@ const getGraph = async (url) => {
     let graph = [];
     const browser = await puppeteer.launch({ headless: "new" });
     const page = await browser.newPage();
-    await page.setUserAgent(userAgent.random().toString());
 
     try {
       await page.goto(`${url}#d=gsc_md_hist`);
@@ -472,7 +466,6 @@ const getSubTable = async (url) => {
   try {
     const browser = await puppeteer.launch({ headless: "new" });
     const page = await browser.newPage();
-    await page.setUserAgent(userAgent.random().toString());
 
     try {
       await page.goto(url, { waitUntil: "networkidle2" });

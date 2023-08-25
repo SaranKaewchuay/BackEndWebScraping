@@ -4,7 +4,7 @@ const {
   insertArticleDataToDbScopus,
   insertDataToJournal,
   insertDataToCoressponding,
-  insertWuDocBeforAuthorScopus 
+  insertWuDocBeforAuthorScopus,
 } = require("../insertToDb/insertToDb");
 const {
   getOldNumDocInPage,
@@ -20,6 +20,7 @@ const {
   hasEidOfAuthor,
   pushLogScraping,
   hasScopusIdInAuthor,
+  hasFieldWuDoc,
 } = require("../../qurey/qurey_function");
 const {
   scraperJournalData,
@@ -44,11 +45,16 @@ let checkArticleScrapingFirst = false;
 let checkAddSourceId = false;
 let numOldDocument = 0;
 
-const scraperArticleScopus = async () => {
+const scraperArticleScopus = async (authorId) => {
   try {
     const baseAuthorUrl = getBaseURL();
-    let allURLs = await getAllScopusAuthIDs();
-    allURLs = allURLs.slice(0, allURLs.length);
+    let allURLs;
+    if (typeof authorId !== "undefined") {
+      allURLs = authorId;
+    } else {
+      allURLs = await getAllScopusAuthIDs();
+      allURLs = allURLs.slice(0, 3);
+    }
 
     if (numOldDocument === 0) {
       numOldDocument = await getCountRecordInArticle();
@@ -114,7 +120,7 @@ const scraperArticleScopus = async () => {
               oldNumDocInPage: oldNumDocInPage,
             };
             let article_data;
-            if (numArticleOfAuthor === 0) {
+            if (numArticleOfAuthor === 0 || typeof authorId !== "undefined") {
               checkFirst = true;
               checkArticleScrapingFirst = true;
               checkNumDoc.status = "first";
@@ -281,25 +287,37 @@ const scraperArticleScopus = async () => {
               }
             } else if (result.status === "rejected") {
               console.error("\nError occurred while scraping : ", error);
-              await scraperArticleScopus();
+              if (typeof authorId !== "undefined") {
+                await scraperArticleScopus(authorId);
+              } else {
+                await scraperArticleScopus();
+              }
               return;
             }
           }
           if (
             sourceID.length > 0 &&
             checkArticleScrapingFirst &&
-            (await getCountRecordInJournal()) > 0
+            (await getCountRecordInJournal()) > 0 && typeof authorId === "undefined"
           ) {
             await scrapJournal(sourceID);
           }
         } else {
           console.log("!== batchsize");
-          await scraperArticleScopus();
+          if (typeof authorId !== "undefined") {
+            await scraperArticleScopus(authorId);
+          } else {
+            await scraperArticleScopus();
+          }
           return;
         }
       } else {
         console.log("Some article data is incomplete.");
-        await scraperArticleScopus();
+        if (typeof authorId !== "undefined") {
+          await scraperArticleScopus(authorId);
+        } else {
+          await scraperArticleScopus();
+        }
         return;
       }
 
@@ -373,7 +391,11 @@ const scraperArticleScopus = async () => {
     return logScraping;
   } catch (error) {
     console.error("\nError occurred while scraping : ", error);
-    await scraperArticleScopus();
+    if (typeof authorId !== "undefined") {
+      await scraperArticleScopus(authorId);
+    } else {
+      await scraperArticleScopus();
+    }
     return null;
   }
 };
@@ -624,80 +646,88 @@ const scrapeArticlesBatch = async (
     console.log("Round Article Scraping : ", roundArticleScraping);
     console.log("------------------------------------");
     const batchUrls = link_Article.slice(i, i + sizeLoop);
-    const promises = batchUrls.map(async (article_url, index) => {
-      const articlePage = await page.browser().newPage();
-      try {
-        await Promise.all([
-          articlePage.goto(article_url, { waitUntil: "networkidle2" }),
-          articlePage.waitForTimeout(1700),
-          waitForElement("#source-preview-flyout"),
-          waitForElement("#affiliation-section > div > div > ul > li > span"),
-        ]);
 
-        const check = await checkArticleWU(articlePage);
-        const eid = await getE_Id(article_url);
-        articleCount++;
-        if (numNewDoc === 0) {
-          if (check.status) {
-            console.log(
-              "Article |",
-              articleCount,
-              "| EID : ",
-              eid,
-              " Of ",
-              author_name
-            );
+    const promises = batchUrls.map(async (article_url, index) => {
+      let articlePage
+      const eid = await getE_Id(article_url);
+      const scopus_id = await getScopusID(url);
+      try {
+        const hasEidAuthor = await hasEidOfAuthor(eid, scopus_id);
+        
+        if (hasEidAuthor === false) {
+          articlePage = await page.browser().newPage();
+          await Promise.all([
+            articlePage.goto(article_url, { waitUntil: "networkidle2" }),
+            articlePage.waitForTimeout(1700),
+            waitForElement("#source-preview-flyout"),
+            waitForElement("#affiliation-section > div > div > ul > li > span"),
+          ]);
+
+          const check = await checkArticleWU(articlePage);
+          articleCount++;
+          if (numNewDoc === 0) {
+            if (check.status) {
+              console.log(
+                "Article |",
+                articleCount,
+                "| EID : ",
+                eid,
+                " Of Author : ",
+                author_name
+              );
+            } else {
+              console.log(
+                "Article |",
+                articleCount,
+                "| EID : ",
+                eid,
+                " Of Author : ",
+                author_name,
+                " does not belong to the Walailak Department."
+              );
+            }
           } else {
             console.log(
               "Article |",
               articleCount,
-              "| EID : ",
+              "| Add New Article EID : ",
               eid,
-              " Of ",
-              author_name,
-              " does not belong to the Walailak Department."
+              " Of Author : ",
+              author_name
             );
+          }
+
+          if (!check.status) {
+            link_not_wu.push(article_url);
+            articlePage.close();
+            return { article: {}, status: "skip" };
+          } else if (check.status) {
+            const article_data = await getArticleDetail(
+              articlePage,
+              article_url,
+              check.department,
+              url,
+              oneArticle,
+              status
+            );
+            articlePage.close();
+            return { article: article_data, status: "articleOfWu" };
           }
         } else {
           console.log(
-            "Article |",
-            articleCount,
-            "| Add New Article EID : ",
+            "\nArticle Eid : ",
             eid,
-            " Of ",
-            author_name
+            " Of Author : ",
+            scopus_id,
+            "is duplicate\n"
           );
-        }
-
-        if (!check.status) {
-          link_not_wu.push(article_url);
-          articlePage.close();
-          return { article: {}, status: "skip" };
-        }
-        const scopus_id = await getScopusID(url);
-        const hasEidAuthor = await hasEidOfAuthor(eid, scopus_id);
-
-        if (
-          check.status &&
-          (typeof oneArticle === "undefined" || hasEidAuthor === false)
-        ) {
-          const article_data = await getArticleDetail(
-            articlePage,
-            article_url,
-            check.department,
-            url,
-            oneArticle,
-            status
-          );
-          articlePage.close();
-          return { article: article_data, status: "articleOfWu" };
-        } else {
-          articlePage.close();
           return { article: {}, status: "skip" };
         }
       } catch (error) {
-        console.error("Failed to scrape article");
-        articlePage.close();
+        console.error("Failed to scrape article : ",error);
+        if (articlePage) {
+          articlePage.close(); 
+        }
         return { article: null, status: "Failed" };
       }
     });
@@ -882,11 +912,18 @@ const scrapeArticleData = async (
         await insertArticleDataToDbScopus(article_detail, author_name);
         if (checkFirst) {
           if (await hasScopusIdInAuthor(scopus_id)) {
-            await addCountDocumentInWu(
-              scopus_id,
-              article_detail.length,
-              author_name
-            );
+            if (await hasFieldWuDoc(scopus_id)) {
+              const articleInWU =
+                Number(await getOldNumArticleInWU(scopus_id)) +
+                article_detail.length;
+              await addCountDocumentInWu(scopus_id, articleInWU, author_name);
+            } else {
+              await addCountDocumentInWu(
+                scopus_id,
+                article_detail.length,
+                author_name
+              );
+            }
           } else {
             await insertWuDocBeforAuthorScopus(
               scopus_id,
@@ -910,7 +947,14 @@ const scrapeArticleData = async (
         }
       } else {
         if (await hasScopusIdInAuthor(scopus_id)) {
-          await addCountDocumentInWu(scopus_id, 0, author_name);
+          if (await hasFieldWuDoc(scopus_id)) {
+            let articleInWU =
+              Number(await getOldNumArticleInWU(scopus_id)) +
+              article_detail.length;
+            await addCountDocumentInWu(scopus_id, articleInWU, author_name);
+          } else {
+            await addCountDocumentInWu(scopus_id, 0, author_name);
+          }
         } else {
           await insertWuDocBeforAuthorScopus(scopus_id, 0, author_name);
         }
@@ -1139,7 +1183,7 @@ const getArticleDetail = async (
     const corresponding = {};
     const check = await hasSourceEID(eid);
 
-    if (!check && oneArticle === false) {
+    if (!check) {
       corresponding.scopusEID = eid;
       const data = await scraperCorresponding(page, html, coAuthor, eid);
       corresponding.corresAuthorID = data.corresAuthorID;
@@ -1153,12 +1197,15 @@ const getArticleDetail = async (
       } else {
         console.log("-- Not Have Corresponding Of EID : ", eid);
       }
-    } else if (typeof oneArticle === "undefined") {
-      corresponding.scopusEID = eid;
-      const data = await scraperCorresponding(page, html, coAuthor, eid);
-      corresponding.corresAuthorID = data.corresAuthorID;
-      corresponding.correspondingData = data.correspondingData;
+    } else {
+      console.log("-- Corresponding Of EID : ", eid, "is duplicate");
     }
+    // else if (typeof oneArticle === "undefined") {
+    //   corresponding.scopusEID = eid;
+    //   const data = await scraperCorresponding(page, html, coAuthor, eid);
+    //   corresponding.corresAuthorID = data.corresAuthorID;
+    //   corresponding.correspondingData = data.correspondingData;
+    // }
 
     const source_id = await getSourceID(page, status);
     const check_journal = source_id ? true : false;

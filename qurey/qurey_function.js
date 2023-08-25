@@ -97,6 +97,8 @@ const getOldNumArticleInWU = async (author_scopus_id) => {
     let wuDocuments = 0;
     if (result) {
       wuDocuments = result.wu_documents;
+    }else{
+      wuDocuments = 0
     }
     return wuDocuments;
   } catch (err) {
@@ -421,7 +423,28 @@ const getArticleOfAuthorNotPage = async (scopus_id) => {
   }
 }
 
+
+const  hasFieldWuDoc = async (scopus_id) => {
+  try {
+    const query = {
+      author_scopus_id: scopus_id,
+      wu_documents: { $exists: true }
+    };
+    const docs = await AuthorScopus.find(query);
+    if(docs.length > 0){
+      return true
+    }else{
+      return false
+    }
+
+  } catch (error) {
+    console.error('Error:', error);
+    return null
+  }
+}
+
 module.exports = {
+  hasFieldWuDoc,
   getArticleOfAuthorNotPage,
   getNumArticleOfAuthorInDB,
   getOldNumDocInPage,

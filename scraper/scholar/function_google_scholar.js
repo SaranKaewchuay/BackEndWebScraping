@@ -650,16 +650,6 @@ const getArticleDetail = async (html, url,scholar_id) => {
   }
 };
 
-const requestToWebPage = async (url, page) => {
-  const response = await page.goto(url, { waitUntil: "networkidle2" });
-  if (response.ok) {
-    return page;
-  } else {
-    return "page not response ok";
-  }
-};
-
-
 const getAuthor = async (author) => {
   try {
     const author_data = author.split(",").map((item) => item.trim());

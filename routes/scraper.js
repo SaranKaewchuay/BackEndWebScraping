@@ -294,7 +294,6 @@ router.get("/scraper-articleOfauthor-scopus", async (req, res) => {
       name: e.trim(),
       scopus_id: e.trim()
     }));
-    console.log("scopus_id  =", scopus_id);
     console.log("\nStart Scraping Article Scopus\n");
     const message = await scraperArticleScopus(allScopusId)
     console.log("\nFinish Scraping Article Scopus\n");
@@ -317,7 +316,6 @@ router.get("/scraper-journal-scopus", async (req, res) => {
     const allSourceId = source_id.split(",").map((e) => e.trim());
     console.log("\nStart Scraping Journal Scopus\n");
     const message = await scrapJournal(allSourceId)
-    // const journal = await scrapOneJournal(source_id);
     console.log("\nFinish Scraping Journal Scopus\n");
 
     res.status(200).json({

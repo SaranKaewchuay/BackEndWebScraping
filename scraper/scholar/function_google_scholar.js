@@ -4,8 +4,8 @@ const axios = require("axios");
 const { insertDataToDbScholar} = require("../insertToDb/insertToDb");
 
 let linkError = [];
-// let url_not = [];
 let url_author;
+// let url_not = [];
 
 const getUserScholarId = async (url) => {
   try {
